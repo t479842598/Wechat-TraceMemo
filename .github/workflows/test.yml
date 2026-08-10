@@ -34,7 +34,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        if: runner.os == 'macOS'
         run: pnpm exec playwright install chromium
 
       - name: Type check
@@ -69,7 +68,7 @@ jobs:
           WXE_E2E_CLOSE_DELAY_MS: 0
 
       - name: Upload Playwright diagnostics
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-${{ matrix.os }}
