@@ -33,7 +33,10 @@ describe('ApiTokenStore', () => {
     const first = firstStore.revealToken().token
     expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/)
     expect(fs.readFileSync(filePath, 'utf8')).not.toContain(String(first))
-    expect(fs.statSync(filePath).mode & 0o777).toBe(0o600)
+    // Windows 不支持 Unix 权限位，fs.statSync().mode 在 Windows 上返回 0o666
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(filePath).mode & 0o777).toBe(0o600)
+    }
 
     const secondStore = new ApiTokenStore(filePath)
     expect(secondStore.ensureToken()).toMatchObject({ success: true, hasToken: true })
