@@ -41,7 +41,7 @@ export async function generateAgentGroupReport(
     return { success: false, error: `“${query}”不是群聊` }
   }
 
-  const range = request.range === 'yesterday' || request.range === '7days' ? request.range : 'today'
+  const range = request.range ?? 'today'
   const { startTime, endTime } = getSummaryDateRange(range)
   let messages = listMessages(contact.md5, startTime, endTime) as Message[]
   if (!messages.length) return { success: false, error: '所选时间范围没有可总结的消息' }

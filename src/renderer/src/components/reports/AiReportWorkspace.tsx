@@ -7,7 +7,7 @@ import {
   ReportGenerationPhase,
   ReportPaths
 } from '../../hooks/useGroupReportGeneration'
-import { SummaryDateRange, SummaryMessageType } from '../../utils/group-report'
+import { SummaryDateRange, SummaryMessageType, isCustomRange } from '../../utils/group-report'
 import { MessageTypeSelector } from './MessageTypeSelector'
 import { ModelSummary } from './ModelSummary'
 import { ReportDensitySelector } from './ReportDensitySelector'
@@ -48,6 +48,7 @@ interface AiReportWorkspaceProps {
 }
 
 const rangeLabel = (range: SummaryDateRange): string => {
+  if (isCustomRange(range)) return `自定义 ${range.startDate} 至 ${range.endDate}`
   if (range === 'yesterday') return '昨日'
   if (range === '7days') return '近 7 天'
   return '今天'

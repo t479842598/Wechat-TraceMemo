@@ -908,7 +908,15 @@ export const parseGroupDailyReport = (
 // main 分支兼容导出(SummaryDateRange / getSummaryDateRange 等)
 // 用于让 App.tsx / useGroupReportGeneration.ts 等 main 分支文件能继续编译
 // ============================================================
-export type SummaryDateRange = 'today' | 'yesterday' | '7days'
+export type PresetSummaryDateRange = 'today' | 'yesterday' | '7days'
+export interface CustomSummaryDateRange {
+  custom: true
+  /** ISO 日期字符串 YYYY-MM-DD，本地时区 */
+  startDate: string
+  /** ISO 日期字符串 YYYY-MM-DD，本地时区 */
+  endDate: string
+}
+export type SummaryDateRange = PresetSummaryDateRange | CustomSummaryDateRange
 export type SummaryMessageType =
   | 'text'
   | 'image'
@@ -918,7 +926,10 @@ export type SummaryMessageType =
   | 'share'
   | 'system'
 
-export const SUMMARY_DATE_OPTIONS: { value: SummaryDateRange; label: string }[] = [
+export const isCustomRange = (range: SummaryDateRange): range is CustomSummaryDateRange =>
+  typeof range === 'object' && range !== null && range.custom === true
+
+export const SUMMARY_DATE_OPTIONS: { value: PresetSummaryDateRange; label: string }[] = [
   { value: 'today', label: '今天' },
   { value: 'yesterday', label: '昨日' },
   { value: '7days', label: '近 7 天' }
@@ -980,6 +991,13 @@ export const getSummaryDateRange = (
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000
   const endTime = Math.floor(Date.now() / 1000)
+  if (isCustomRange(range)) {
+    const [sy, sm, sd] = range.startDate.split('-').map(Number)
+    const [ey, em, ed] = range.endDate.split('-').map(Number)
+    const start = new Date(sy, (sm || 1) - 1, sd || 1).getTime() / 1000
+    const endDay = new Date(ey, (em || 1) - 1, (ed || 1) + 1).getTime() / 1000
+    return { startTime: start, endTime: Math.min(endDay - 1, endTime) }
+  }
   if (range === 'yesterday') {
     return { startTime: startOfToday - 86400, endTime: startOfToday - 1 }
   }

@@ -17,7 +17,7 @@ import { ReportViewer } from './components/reports/ReportViewer'
 import { contactDisplayName } from './components/reports/types'
 import type { GeneratedReportRecord, ReportWorkspaceView } from './components/reports/types'
 import { AiModelConfig, useGroupReportGeneration } from './hooks/useGroupReportGeneration'
-import { SummaryDateRange, SummaryMessageType } from './utils/group-report'
+import { SummaryDateRange, SummaryMessageType, isCustomRange } from './utils/group-report'
 import { Contact, Message } from '../../shared/types'
 import { DatabaseConnectionMode, DatabaseConnectionPage } from './components/DatabaseConnectionPage'
 import { FirstUseWelcome } from './components/FirstUseWelcome'
@@ -1471,12 +1471,13 @@ function App(): React.ReactElement {
         contactId: reportSourceContact.md5,
         contactName: contactDisplayName(reportSourceContact),
         contactAvatar: reportSourceContact.avatar || undefined,
-        dateRange:
-          summaryDateRange === 'yesterday'
-            ? '昨日'
-            : summaryDateRange === '7days'
-              ? '近 7 天'
-              : '今天',
+        dateRange: (() => {
+          if (summaryDateRange === 'yesterday') return '昨日'
+          if (summaryDateRange === '7days') return '近 7 天'
+          if (isCustomRange(summaryDateRange))
+            return `自定义 ${summaryDateRange.startDate} 至 ${summaryDateRange.endDate}`
+          return '今天'
+        })(),
         messageCount: reportGeneration.reportMessages.length,
         generatedAt: new Date().toISOString(),
         generatedImage: reportGeneration.generatedImage || undefined,

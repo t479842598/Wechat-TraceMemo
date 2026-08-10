@@ -286,3 +286,30 @@ WechatExplorer 在开发过程中参考了多个优秀的开源项目，感谢�
 感谢所有开源作者。
 
 </details>
+
+## 项目来源
+
+本项目 fork 自 [Wxw-Gu/WechatExplorer](https://github.com/Wxw-Gu/WechatExplorer)（原作者：电摇小子 / Qingmao），并在其基础上进行了定制改动。所有原始实现版权归原项目作者所有，本仓库的改动以相同协议开源，仅用于个人学习与本地工具改进。
+
+原仓库所列举的致谢与参考项目（WechatMessageExplorer / WeFlow / chatlog 等）同样适用于本仓库。
+
+## 更新日志
+
+### 本仓库相对原版的改动
+
+- **开放群聊日报"自定义日期"功能**
+  - 原版在日报配置面板中将"自定义"按钮硬编码为禁用状态（标注"即将支持"），仅支持固定范围"今天 / 昨日 / 近 7 天"。
+  - 本次改动：
+    - 扩展 `SummaryDateRange` 类型，新增 `custom` 形态承载 `{ startDate, endDate }`。
+    - `getSummaryDateRange` 增加自定义日期分支，按"开始日 0:00 至结束日 23:59"计算时间窗，并限制不超过当前时刻。
+    - `ReportRangeSelector` 启用"自定义"按钮，点击后展开两个日期输入框（开始 / 结束），支持反选自动校正。
+    - 日报标题与保存记录的 `dateRange` 字段同步显示"自定义 YYYY-MM-DD 至 YYYY-MM-DD"。
+    - main 进程 `agent-group-report-service` 透传自定义 range，不再强制收敛为三种枚举。
+  - 影响文件：
+    - `src/renderer/src/utils/group-report.ts`
+    - `src/renderer/src/components/reports/ReportRangeSelector.tsx`
+    - `src/renderer/src/components/reports/AiReportWorkspace.tsx`
+    - `src/renderer/src/App.tsx`
+    - `src/main/services/agent-group-report-service.ts`
+    - `src/renderer/src/styles/reports-core.scss`
+

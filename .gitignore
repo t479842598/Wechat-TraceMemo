@@ -13,6 +13,7 @@ resources/connectors/wechat/
 .omc
 .codex/
 docs/design/
+.lrnev/
 docs/ui-redesign-plan.md
 docs/ui-redesign-spec.md
 AGENTS.md
