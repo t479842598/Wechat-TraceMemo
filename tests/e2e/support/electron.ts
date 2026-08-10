@@ -20,6 +20,7 @@ export async function launchTestApp(
     largeContacts?: number
     corruptCache?: boolean
     aiFailure?: string
+    fixedTimes?: boolean
   } = {}
 ): Promise<TestApplication> {
   const ownsDirectory = !options.userData
@@ -39,7 +40,8 @@ export async function launchTestApp(
       WXE_E2E_MODE: options.mode || 'connected',
       WXE_E2E_LARGE_CONTACTS: String(options.largeContacts || 0),
       WXE_E2E_CORRUPT_CACHE: options.corruptCache ? '1' : '0',
-      WXE_E2E_AI_FAILURE: options.aiFailure || ''
+      WXE_E2E_AI_FAILURE: options.aiFailure || '',
+      WXE_E2E_FIXED_TIMES: options.fixedTimes ? '1' : '0'
     }
   })
   const page = await app.firstWindow()

@@ -36,7 +36,7 @@ const RICH_MESSAGE_TYPES = [
   '不支持的消息'
 ]
 
-export function MessageBubble({
+export const MessageBubble = React.memo(function MessageBubble({
   message,
   contact,
   isGroupChat,
@@ -108,4 +108,4 @@ export function MessageBubble({
       )}
     </div>
   )
-}
+})

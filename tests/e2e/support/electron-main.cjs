@@ -7,9 +7,12 @@ const root = path.resolve(__dirname, '../../..')
 const fixture = require(path.join(root, 'tests/fixtures/chat-data.json'))
 // fixture 中的 createTime 是固定时间戳（生成 fixture 时的日期），会随真实日期推移
 // 逐渐落在“近 7 天/今天/昨日”之外，导致日报等按时间范围读取的 E2E 用例失败。
-// 这里把所有消息的时间动态平移到“当前时间附近”，保留消息间相对间隔，
+// 默认把所有消息的时间动态平移到“当前时间附近”，保留消息间相对间隔，
 // 使今天/昨日/近7天/自定义日期范围都能命中 fixture 消息。
-{
+// 视觉回归（visual.spec.ts）必须使用固定时间：若也平移，界面上的“M 月 D 日”时间
+// 分隔标签会随运行日期变化，截图基线会随日历推移过期导致对比失败，
+// 因此 WXE_E2E_FIXED_TIMES=1 时跳过平移、直接使用 fixture 原始固定时间。
+if (process.env.WXE_E2E_FIXED_TIMES !== '1') {
   const allMessages = Object.values(fixture.messages).flat()
   const minCreateTime = Math.min(...allMessages.map((message) => message.createTime || 0))
   const delta = Math.floor(Date.now() / 1000) - 2 * 86400 - minCreateTime // 平移到“两天前”起
@@ -33,6 +36,9 @@ if (!userData) throw new Error('WXE_E2E_USER_DATA is required')
 app.setPath('userData', userData)
 app.setPath('logs', path.join(userData, 'logs'))
 app.commandLine.appendSwitch('disable-gpu')
+// 固定 deviceScaleFactor=1，避免不同系统缩放/DPI 下截图像素尺寸不一致
+//（Windows CI 与基线生成机若缩放不同，截图对比会直接尺寸不匹配）。
+app.commandLine.appendSwitch('force-device-scale-factor', '1')
 
 const VALID_KEY = 'a'.repeat(64)
 const imageData =

@@ -7,7 +7,7 @@ interface ConversationItemProps {
   onSelect: (contact: Contact) => void
 }
 
-export function ConversationItem({
+export const ConversationItem = React.memo(function ConversationItem({
   contact,
   active,
   onSelect
@@ -64,4 +64,4 @@ export function ConversationItem({
       </span>
     </button>
   )
-}
+})

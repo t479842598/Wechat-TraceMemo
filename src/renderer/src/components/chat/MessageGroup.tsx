@@ -12,7 +12,7 @@ interface MessageGroupProps {
   jumpTargetMessageId?: string
 }
 
-export function MessageGroup({
+export const MessageGroup = React.memo(function MessageGroup({
   group,
   contact,
   isGroupChat,
@@ -82,4 +82,4 @@ export function MessageGroup({
       </div>
     </>
   )
-}
+})

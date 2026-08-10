@@ -1,0 +1,16 @@
+/*
+ * 视觉回归统一渲染样式（供 toHaveScreenshot stylePath 注入）。
+ *
+ * 截图基线在本地 Windows 生成，而 CI 跑在 windows-latest（Windows Server）上，
+ * 两者默认字体抗锯齿（ClearType 子像素 AA）与字形渲染存在差异，会导致截图对比
+ * 出现分散在文本区域的像素差异。这里统一为灰度抗锯齿 + 几何精度，使基线与 CI
+ * 截图都在同一渲染模式下生成/对比，消除跨机器的渲染差异。
+ */
+*,
+*::before,
+*::after {
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: geometricPrecision !important;
+  font-synthesis: none !important;
+  font-kerning: normal !important;
+}
