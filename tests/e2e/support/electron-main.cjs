@@ -5,6 +5,29 @@ const path = require('path')
 
 const root = path.resolve(__dirname, '../../..')
 const fixture = require(path.join(root, 'tests/fixtures/chat-data.json'))
+// fixture 中的 createTime 是固定时间戳（生成 fixture 时的日期），会随真实日期推移
+// 逐渐落在“近 7 天/今天/昨日”之外，导致日报等按时间范围读取的 E2E 用例失败。
+// 这里把所有消息的时间动态平移到“当前时间附近”，保留消息间相对间隔，
+// 使今天/昨日/近7天/自定义日期范围都能命中 fixture 消息。
+{
+  const allMessages = Object.values(fixture.messages).flat()
+  const minCreateTime = Math.min(...allMessages.map((message) => message.createTime || 0))
+  const delta = Math.floor(Date.now() / 1000) - 2 * 86400 - minCreateTime // 平移到“两天前”起
+  for (const message of allMessages) {
+    if (typeof message.createTime === 'number') {
+      message.createTime += delta
+    }
+    if (typeof message.datetime === 'string') {
+      const shifted = new Date((Date.parse(message.datetime) || 0) + delta * 1000)
+      if (!Number.isNaN(shifted.getTime())) {
+        const pad = (n) => String(n).padStart(2, '0')
+        message.datetime = `${shifted.getFullYear()}-${pad(shifted.getMonth() + 1)}-${pad(
+          shifted.getDate()
+        )} ${pad(shifted.getHours())}:${pad(shifted.getMinutes())}:${pad(shifted.getSeconds())}`
+      }
+    }
+  }
+}
 const userData = process.env.WXE_E2E_USER_DATA
 if (!userData) throw new Error('WXE_E2E_USER_DATA is required')
 app.setPath('userData', userData)

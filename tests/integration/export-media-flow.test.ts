@@ -850,7 +850,10 @@ describe('media export flow', () => {
       dirname(first.outputPath!),
       firstArchive.messages[0].exportMediaUrl as string
     )
-    expect(statSync(videoPath).mode & 0o777).toBe(0o644)
+    // Windows 不支持 Unix 权限位，fs.statSync().mode 在 Windows 上返回 0o666
+    if (process.platform !== 'win32') {
+      expect(statSync(videoPath).mode & 0o777).toBe(0o644)
+    }
 
     chmodSync(videoPath, 0o444)
     const second = await runExport(
@@ -860,7 +863,9 @@ describe('media export flow', () => {
 
     expect(second.success, second.error).toBe(true)
     expect(second.outputPath).toBe(first.outputPath)
-    expect(statSync(videoPath).mode & 0o777).toBe(0o644)
+    if (process.platform !== 'win32') {
+      expect(statSync(videoPath).mode & 0o777).toBe(0o644)
+    }
   })
 
   it('merges two conversations in stable order without colliding identical message ids or media', async () => {
@@ -969,17 +974,23 @@ describe('media export flow', () => {
     expect(second.outputPath).toBe(first.outputPath)
     expect(firstSize).toBeGreaterThan(0)
     expect(readFileSync(second.outputPath!).subarray(0, 2).toString()).toBe('PK')
-    const entries = execFileSync('unzip', ['-Z1', second.outputPath!], { encoding: 'utf8' })
+    const entries =
+      process.platform === 'win32'
+        ? // Windows 不自带 unzip；Windows 10+ 自带 bsdtar，可用 tar -tf 列出 zip 内容
+          execFileSync('tar', ['-tf', second.outputPath!], { encoding: 'utf8' })
+        : execFileSync('unzip', ['-Z1', second.outputPath!], { encoding: 'utf8' })
+    // 统一 zip 条目格式：Windows 的 bsdtar 可能用 \ 分隔路径、带 ./ 前缀和 \r 行尾
+    const normalizedEntries = entries.replace(/\\/g, '/').replace(/\.\//g, '').replace(/\r/g, '')
     const htmlPath = join(state.documents, 'WechatExplorer', '导出', 'zip-fixture', 'index.html')
     const archive = readArchive(htmlPath)
-    expect(entries).toContain('zip-fixture/index.html')
-    expect(entries).toContain('zip-fixture/data/messages.js')
-    const avatarEntries = entries
+    expect(normalizedEntries).toContain('zip-fixture/index.html')
+    expect(normalizedEntries).toContain('zip-fixture/data/messages.js')
+    const avatarEntries = normalizedEntries
       .split('\n')
       .filter((entry) => /zip-fixture\/avatars\/avatar_[0-9a-f]{16}\.png$/.test(entry))
     expect(avatarEntries).toHaveLength(1)
     expect(archive.conversations[0].avatarUrl).toBe(archive.messages[0].exportAvatarUrl)
-    expect(entries).toMatch(/zip-fixture\/media\/image_[0-9a-f]{16}\.png/)
+    expect(normalizedEntries).toMatch(/zip-fixture\/media\/image_[0-9a-f]{16}\.png/)
     expect(progress.some((args) => (args[1] as { phase?: string })?.phase === 'compressing')).toBe(
       true
     )
