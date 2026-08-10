@@ -13,7 +13,6 @@ import {
   writeFileSync
 } from 'fs'
 import { tmpdir } from 'os'
-import { execFileSync } from 'child_process'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ExportTarget } from '../../src/shared/export'
 import type { Message } from '../../src/shared/types'
@@ -218,6 +217,37 @@ const readArchive = (
       .trim()
       .replace(/;\s*$/, '')
   )
+}
+
+/**
+ * 用纯 Node 解析 ZIP 中央目录并返回全部条目名（UTF-8）。
+ * 不依赖平台自带的 tar/unzip：Windows 的 bsdtar 会把含中文的命令行参数
+ * 按 ANSI 代码页转换，导致“导出”等中文路径变成“??”而打不开 zip。
+ */
+const listZipEntries = (zipPath: string): string[] => {
+  const buffer = readFileSync(zipPath)
+  // 从尾部向前查找 End of Central Directory（0x06054b50），其前可带最长 64 KiB 的注释
+  let eocdOffset = -1
+  const searchStart = Math.max(0, buffer.length - 22)
+  for (let offset = searchStart; offset >= Math.max(0, searchStart - 65_536); offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) {
+      eocdOffset = offset
+      break
+    }
+  }
+  if (eocdOffset < 0) throw new Error('无效的 ZIP 文件：未找到中央目录')
+  const entryCount = buffer.readUInt16LE(eocdOffset + 10)
+  let offset = buffer.readUInt32LE(eocdOffset + 16)
+  const entries: string[] = []
+  for (let index = 0; index < entryCount; index += 1) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) throw new Error('无效的 ZIP 中央目录条目')
+    const nameLength = buffer.readUInt16LE(offset + 28)
+    const extraLength = buffer.readUInt16LE(offset + 30)
+    const commentLength = buffer.readUInt16LE(offset + 32)
+    entries.push(buffer.subarray(offset + 46, offset + 46 + nameLength).toString('utf8'))
+    offset += 46 + nameLength + extraLength + commentLength
+  }
+  return entries
 }
 
 describe('media export flow', () => {
@@ -974,23 +1004,19 @@ describe('media export flow', () => {
     expect(second.outputPath).toBe(first.outputPath)
     expect(firstSize).toBeGreaterThan(0)
     expect(readFileSync(second.outputPath!).subarray(0, 2).toString()).toBe('PK')
-    const entries =
-      process.platform === 'win32'
-        ? // Windows 不自带 unzip；Windows 10+ 自带 bsdtar，可用 tar -tf 列出 zip 内容
-          execFileSync('tar', ['-tf', second.outputPath!], { encoding: 'utf8' })
-        : execFileSync('unzip', ['-Z1', second.outputPath!], { encoding: 'utf8' })
-    // 统一 zip 条目格式：Windows 的 bsdtar 可能用 \ 分隔路径、带 ./ 前缀和 \r 行尾
-    const normalizedEntries = entries.replace(/\\/g, '/').replace(/\.\//g, '').replace(/\r/g, '')
+    const entries = listZipEntries(second.outputPath!)
     const htmlPath = join(state.documents, 'WechatExplorer', '导出', 'zip-fixture', 'index.html')
     const archive = readArchive(htmlPath)
-    expect(normalizedEntries).toContain('zip-fixture/index.html')
-    expect(normalizedEntries).toContain('zip-fixture/data/messages.js')
-    const avatarEntries = normalizedEntries
-      .split('\n')
-      .filter((entry) => /zip-fixture\/avatars\/avatar_[0-9a-f]{16}\.png$/.test(entry))
+    expect(entries).toContain('zip-fixture/index.html')
+    expect(entries).toContain('zip-fixture/data/messages.js')
+    const avatarEntries = entries.filter((entry) =>
+      /zip-fixture\/avatars\/avatar_[0-9a-f]{16}\.png$/.test(entry)
+    )
     expect(avatarEntries).toHaveLength(1)
     expect(archive.conversations[0].avatarUrl).toBe(archive.messages[0].exportAvatarUrl)
-    expect(normalizedEntries).toMatch(/zip-fixture\/media\/image_[0-9a-f]{16}\.png/)
+    expect(entries.some((entry) => /zip-fixture\/media\/image_[0-9a-f]{16}\.png/.test(entry))).toBe(
+      true
+    )
     expect(progress.some((args) => (args[1] as { phase?: string })?.phase === 'compressing')).toBe(
       true
     )

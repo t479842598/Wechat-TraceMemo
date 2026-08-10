@@ -311,6 +311,138 @@ handle('ai:chat', (messages) => {
   return { success: true, data: '固定假回答：测试数据中的核心流程正常。' }
 })
 
+const zeroAiSearchTimings = () =>
+  Object.fromEntries(
+    [
+      'queryUnderstandingMs',
+      'contactResolutionMs',
+      'knowledgeSearchMs',
+      'workerIpcMs',
+      'workerBootMs',
+      'dispatchMs',
+      'workerSqlMs',
+      'responseSerializeMs',
+      'responseTransferMs',
+      'workerQueueMs',
+      'workerExecutionMs',
+      'globalCountMs',
+      'voiceCoverageMs',
+      'wcdbQueueMs',
+      'wcdbExecutionMs',
+      'senderEnrichmentMs',
+      'ipcMs',
+      'serializationMs',
+      'otherMs',
+      'ftsMs',
+      'chunkExpandMs',
+      'messageLoadMs',
+      'rankingMs',
+      'candidateRankingMs',
+      'evidenceBuildMs',
+      'aggregationMs',
+      'contextPreparationMs',
+      'agentDecisionMs',
+      'agentToolMs',
+      'aiGenerationMs',
+      'totalMs'
+    ].map((name) => [name, 0])
+  )
+
+// 问问微信（runAiSearch）整条链路的本地假服务：
+// 前端 ensureAiSearchDataConsent 需要 ai-search:getProviderStatus，
+// runAnalysis 需要 ai-search:run 返回完整的 AiSearchPipelineResult，
+// 否则 IPC 无 handler 时 invoke 会 reject，ASK-01/ASK-02 永远看不到假回答文本。
+handle('ai-search:getProviderStatus', () => ({
+  configured: true,
+  requiresConsent: false,
+  providerId: 'fixture-provider',
+  providerName: '本地假服务'
+}))
+handle('ai-search:authorizeExternalProvider', () => ({ success: true }))
+handle('ai-search:cancel', () => ({ cancelled: false }))
+handle('ai-search:run', (request) => {
+  const failure = process.env.WXE_E2E_AI_FAILURE
+  const base = {
+    requestId: request.requestId,
+    plan: {
+      intent: 'general',
+      keywords: ['测试'],
+      variants: [],
+      source: 'local',
+      scopeLabel: '全部聊天',
+      rangeLabel: '全部历史',
+      timeRange: { label: '全部历史', reason: 'fixture', source: 'ui' },
+      contactNames: []
+    },
+    knowledge: {
+      source: 'knowledge',
+      state: 'ready',
+      indexedMessageCount: 5,
+      indexedChunkCount: 2,
+      totalMessages: 5,
+      voiceCoverage: {
+        voiceMessageCount: 0,
+        transcribedVoiceCount: 0,
+        failedVoiceCount: 0,
+        voiceCoverageComplete: true
+      }
+    },
+    candidateEvidenceCount: 1,
+    retrieval: {
+      intent: 'general',
+      timeRange: { label: '全部历史', reason: 'fixture', source: 'ui' },
+      retrievalMode: 'global_fts',
+      candidateCount: 1,
+      uniqueCandidateCount: 1,
+      sourceCoverage: 'complete',
+      isComplete: true,
+      fallbackUsed: false,
+      suspicious: false
+    },
+    evidence: [],
+    contextEvidenceCount: 0,
+    aggregation: {
+      messageCount: 1,
+      peopleCount: 0,
+      conversationCount: 0,
+      people: [],
+      conversations: []
+    },
+    agent: { mode: 'fallback', toolCalls: 0, trace: [] },
+    citationValidation: { status: 'valid', invalidCitationIds: [] },
+    timings: zeroAiSearchTimings(),
+    ai: {
+      providerName: '本地假服务',
+      modelName: '固定响应模型',
+      inputTokens: 10,
+      inputTokensEstimated: false
+    },
+    elapsedMs: 0
+  }
+  if (failure) {
+    return {
+      ...base,
+      status: 'ai_failed',
+      error: `本地假服务错误 ${failure}`,
+      errorStage: 'ai_generating'
+    }
+  }
+  return { ...base, status: 'completed', answer: '固定假回答：测试数据中的核心流程正常。' }
+})
+handle('knowledge:getStatus', () => ({
+  accountId: 'fixture-account-id',
+  state: 'ready',
+  indexedMessageCount: 5,
+  indexedChunkCount: 2,
+  sourceMessageCount: 5,
+  processedMessages: 5,
+  totalMessages: 5,
+  estimatedRemainingMs: null,
+  databaseBytes: 0,
+  walBytes: 0,
+  shmBytes: 0
+}))
+
 handle('report:export', () => {
   const htmlPath = path.join(userData, 'fixture-report.html')
   const pngPath = path.join(userData, 'fixture-report.png')
