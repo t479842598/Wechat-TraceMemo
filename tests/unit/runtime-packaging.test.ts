@@ -39,17 +39,17 @@ describe('production runtime packaging', () => {
 
   it('requires the bundled Reader Skill declared by extraResources', () => {
     const resources = join(root, 'reader-skill-resources')
-    const skillPath = join(resources, 'skill', 'wechatexplorer-reader', 'SKILL.md')
+    const skillPath = join(resources, 'skill', 'tracememo-reader', 'SKILL.md')
     const config = readFileSync(resolve(__dirname, '../../electron-builder.yml'), 'utf8')
 
-    expect(config).toContain('docs/skill/wechatexplorer-reader')
-    expect(config).toContain('to: skill/wechatexplorer-reader')
+    expect(config).toContain('docs/skill/tracememo-reader')
+    expect(config).toContain('to: skill/tracememo-reader')
     expect(() => validateReaderSkillRuntime(resources)).toThrow(
-      /Missing bundled WechatExplorer Reader Skill/
+      /Missing bundled TraceMemo Reader Skill/
     )
 
     mkdirSync(dirname(skillPath), { recursive: true })
-    writeFileSync(skillPath, '# WechatExplorer Reader\n')
+    writeFileSync(skillPath, '# TraceMemo Reader\n')
     expect(validateReaderSkillRuntime(resources)).toBe(skillPath)
   })
 
@@ -69,6 +69,30 @@ describe('production runtime packaging', () => {
     expect(() => validateAsarRuntimeDependencies(resources)).toThrow(
       /Missing packaged runtime dependencies:.*@electron-toolkit\/utils/
     )
+  })
+
+  it('accepts runtime dependencies when asar uses Windows path separators', async () => {
+    const resources = join(root, 'asar-complete-resources')
+    const source = join(root, 'asar-complete-source')
+    const packages = [
+      '@electron-toolkit/preload',
+      '@electron-toolkit/utils',
+      'archiver',
+      'electron-updater',
+      'ffmpeg-static',
+      'fs-extra',
+      'jsonrepair',
+      'koffi'
+    ]
+    for (const packageName of packages) {
+      const packagePath = join(source, 'node_modules', ...packageName.split('/'))
+      mkdirSync(packagePath, { recursive: true })
+      writeFileSync(join(packagePath, 'package.json'), '{}')
+    }
+    mkdirSync(resources, { recursive: true })
+    await asar.createPackage(source, join(resources, 'app.asar'))
+
+    expect(() => validateAsarRuntimeDependencies(resources)).not.toThrow()
   })
 
   it('requires and unpacks the bundled ffmpeg-static executable', () => {

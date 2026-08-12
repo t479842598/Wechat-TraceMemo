@@ -10,6 +10,7 @@ import {
 } from '../shared/report-history'
 import type {
   DatabaseKeyEnvironment,
+  DatabaseInitResult,
   DatabaseKeyStorageResult,
   DatabaseKeyValidationResult,
   AccountDiscoveryResult
@@ -57,7 +58,8 @@ import type {
   VoiceModelDownloadResult,
   VoiceModelProgressEvent,
   VoiceModelStatus,
-  VoiceRecognitionResult
+  VoiceRecognitionResult,
+  VoiceTranscriptSnapshot
 } from '../shared/voice-recognition'
 import type {
   AiSearchCancelResult,
@@ -141,10 +143,8 @@ declare global {
       onAppUpdateState: (callback: (state: AppUpdateState) => void) => () => void
       getCacheSummary: () => Promise<CacheSummary>
       clearCache: (scope: 'bootstrap' | 'electron' | 'knowledge' | 'all') => Promise<CacheSummary>
-      initDb: (
-        key: string,
-        accountRoot: string
-      ) => Promise<boolean | { success: boolean; error?: string; monitoring?: boolean }>
+      openKnowledgeDirectory: () => Promise<{ success: boolean; error?: string }>
+      initDb: (key: string, accountRoot: string) => Promise<boolean | DatabaseInitResult>
       discoverAccounts: (inputPath: string) => Promise<AccountDiscoveryResult>
       getBootstrapCache: () => Promise<{
         self?: { wxid: string; nickname: string; avatar?: string; accountRoot: string }
@@ -248,6 +248,9 @@ declare global {
       removeVoiceModel: () => Promise<VoiceModelStatus>
       openVoiceModelDirectory: () => Promise<{ success: boolean; error?: string }>
       recognizeVoice: (reference: VoiceMessageReference) => Promise<VoiceRecognitionResult>
+      getVoiceTranscriptSnapshot: (
+        reference: VoiceMessageReference
+      ) => Promise<VoiceTranscriptSnapshot>
       cancelVoiceRecognition: (reference: VoiceMessageReference) => Promise<{ success: boolean }>
       getVoiceBatchPreflight: (request: VoiceBatchRequest) => Promise<VoiceBatchPreflight>
       getVoiceBatchConversationSummaries: (

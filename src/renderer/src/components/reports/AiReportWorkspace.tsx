@@ -13,6 +13,7 @@ import { ModelSummary } from './ModelSummary'
 import { ReportDensitySelector } from './ReportDensitySelector'
 import { ReportRangeSelector } from './ReportRangeSelector'
 import { ReportMemberNameSelector } from './ReportMemberNameSelector'
+import { ReportGroupMemberSelector } from './ReportGroupMemberSelector'
 import { ReportSectionSelector } from './ReportSectionSelector'
 import { ReportTemplateId, ReportTemplateSelector } from './ReportTemplateSelector'
 
@@ -170,6 +171,7 @@ export function AiReportWorkspace({
           onChange={onMemberNamePreferenceChange}
           disabled={configDisabled}
         />
+        <ReportGroupMemberSelector sourceContact={sourceContact} disabled={configDisabled} />
         <ModelSummary config={modelConfig} onOpenSettings={onOpenModelSettings} />
         <section className="report-config-section report-timeout-section">
           <div>
@@ -193,7 +195,7 @@ export function AiReportWorkspace({
           <h3>隐私说明</h3>
           <p>微信数据库和聊天记录默认从本机读取。</p>
           <p>所选内容将发送至你配置的模型服务进行处理。</p>
-          <p>WechatExplorer 本身不额外保存或转发内容。</p>
+          <p>TraceMemo 本身不额外保存或转发内容。</p>
         </section>
 
         {generatedImage && (

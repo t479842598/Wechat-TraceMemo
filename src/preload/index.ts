@@ -34,7 +34,8 @@ import type {
   VoiceModelDownloadResult,
   VoiceModelProgressEvent,
   VoiceModelStatus,
-  VoiceRecognitionResult
+  VoiceRecognitionResult,
+  VoiceTranscriptSnapshot
 } from '../shared/voice-recognition'
 import type {
   AiSearchCancelResult,
@@ -66,6 +67,8 @@ const api = {
   getCacheSummary: (): Promise<CacheSummary> => ipcRenderer.invoke('cache:getSummary'),
   clearCache: (scope: 'bootstrap' | 'electron' | 'knowledge' | 'all'): Promise<CacheSummary> =>
     ipcRenderer.invoke('cache:clear', scope),
+  openKnowledgeDirectory: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('cache:openKnowledgeDirectory'),
   initDb: (key: string, accountRoot: string) => ipcRenderer.invoke('db:init', key, accountRoot),
   discoverAccounts: (inputPath: string): Promise<AccountDiscoveryResult> =>
     ipcRenderer.invoke('accounts:discover', inputPath),
@@ -137,6 +140,10 @@ const api = {
     ipcRenderer.invoke('voice:openModelDirectory'),
   recognizeVoice: (reference: VoiceMessageReference): Promise<VoiceRecognitionResult> =>
     ipcRenderer.invoke('voice:recognize', reference),
+  getVoiceTranscriptSnapshot: (
+    reference: VoiceMessageReference
+  ): Promise<VoiceTranscriptSnapshot> =>
+    ipcRenderer.invoke('voice:getTranscriptSnapshot', reference),
   cancelVoiceRecognition: (reference: VoiceMessageReference): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('voice:cancelRecognition', reference),
   getVoiceBatchPreflight: (request: VoiceBatchRequest): Promise<VoiceBatchPreflight> =>

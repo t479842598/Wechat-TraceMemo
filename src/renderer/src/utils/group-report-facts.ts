@@ -76,11 +76,15 @@ function friendlyImageNotice(warnings: string[]): string {
 export const isInternalIdentifier = (value: string): boolean =>
   /@chatroom$/i.test(value) || /^wxid_/i.test(value) || /^[a-z0-9_-]{18,}$/i.test(value)
 
+const isSystemMessage = (message: Message): boolean =>
+  message.from === 'system' || message.type === '系统消息' || message.contentData?.type === 'system'
+
 export const summarySender = (
   message: Message,
   contact: Contact | null,
   isGroup: boolean
 ): string => {
+  if (isSystemMessage(message)) return '微信系统消息'
   if (message.from === 'assistant') {
     const ownGroupNickname = message.name?.trim()
     if (isGroup && ownGroupNickname && !isInternalIdentifier(ownGroupNickname)) {
@@ -95,6 +99,11 @@ export const summarySender = (
 
 export const summaryContent = (message: Message): string => {
   const data = message.contentData
+  if (message.type === '语音' || data?.type === 'voice') {
+    return message.voiceTranscript?.trim()
+      ? `[语音${data?.type === 'voice' && data.duration ? ` ${data.duration}秒` : ''}] ${message.voiceTranscript.trim()}`
+      : `[语音${data?.type === 'voice' && data.duration ? ` ${data.duration}秒` : ''}]`
+  }
   if (!data) return message.content?.trim() || `[${message.type || '消息'}]`
 
   switch (data.type) {
@@ -102,12 +111,13 @@ export const summaryContent = (message: Message): string => {
       return '[图片]'
     case 'sticker':
       return '[表情]'
-    case 'voice':
-      return `[语音${data.duration ? ` ${data.duration}秒` : ''}]`
     case 'share':
       return data.articles?.length
         ? `[分享] ${data.articles
-            .map((article) => `${article.title}${article.description ? `：${article.description}` : ''}`)
+            .map(
+              (article) =>
+                `${article.title}${article.description ? `：${article.description}` : ''}`
+            )
             .join('；')}`
         : `[分享] ${data.title}${data.des ? `：${data.des}` : ''}`
     case 'quote': {
@@ -583,12 +593,14 @@ export const buildGroupReportFacts = async (
   for (const message of messages) {
     const sender = summarySender(message, contact, isGroup)
     const timestamp = parseTimestamp(message)
-    speakerCounts.set(sender, (speakerCounts.get(sender) || 0) + 1)
+    if (!isSystemMessage(message)) {
+      speakerCounts.set(sender, (speakerCounts.get(sender) || 0) + 1)
+      if (message.img && !avatars[sender]) avatars[sender] = message.img
+    }
     if (Number.isFinite(timestamp)) {
       const hour = new Date(timestamp).getHours()
       hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1)
     }
-    if (message.img && !avatars[sender]) avatars[sender] = message.img
     if (message.contentData?.type === 'image') imageCount += 1
     if (message.contentData?.type === 'sticker') stickerCount += 1
     if (message.contentData?.type === 'voice') {
@@ -646,7 +658,7 @@ export const buildGroupReportFacts = async (
     mediaMessageCount: imageCount + voiceCount + stickerCount,
     timeSpan,
     generatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
-    recordNote: `基于 WechatExplorer 已加载的 ${transcriptRows.length} 条记录`,
+    recordNote: `基于 TraceMemo 已加载的 ${transcriptRows.length} 条记录`,
     footerNote: '基于已读取聊天记录生成；图片、表情等未解析内容默认只按类型与上下文参与日报。',
     heroParticipants: topSpeakers.slice(0, 4).map((speaker) => speaker.name),
     avatars,
@@ -671,7 +683,9 @@ export const buildGroupReportFacts = async (
     transcriptRows.every((row) => row.content === '[图片]') &&
     !media.visionGallery?.length
   ) {
-    throw new Error('当前范围只有图片，但这些图片暂时无法分析。请改选文字消息，或在设置中验证图片理解能力。')
+    throw new Error(
+      '当前范围只有图片，但这些图片暂时无法分析。请改选文字消息，或在设置中验证图片理解能力。'
+    )
   }
 
   const factsPrompt = [

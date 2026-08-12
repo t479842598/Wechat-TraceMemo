@@ -1,6 +1,6 @@
 # 开发、测试与构建
 
-本文面向希望参与 WechatExplorer 开发、验证文档或维护集成的贡献者。普通用户请从[第一次使用](../user-guide/getting-started.md)开始。
+本文面向希望参与 TraceMemo 开发、验证文档或维护集成的贡献者。普通用户请从[第一次使用](../user-guide/getting-started.md)开始。
 
 ## 技术基线
 
@@ -17,6 +17,8 @@
 pnpm install
 pnpm dev
 ```
+
+本地依赖安装、Go 环境和 Electron 二进制下载异常，请查看[本地启动排障](./local-startup-troubleshooting.md)。
 
 常用检查：
 

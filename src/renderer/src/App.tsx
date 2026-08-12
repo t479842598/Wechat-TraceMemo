@@ -378,12 +378,19 @@ function App(): React.ReactElement {
   const handleStartExport = async (
     request: ExportRequest
   ): Promise<import('../../shared/export').ExportResult> => {
-    const targetNames = request.targets.map((target) => target.name)
-    const targetLabel =
-      targetNames.length > 1 ? `${targetNames[0]} 等 ${targetNames.length} 个聊天` : targetNames[0]
+    const exportAll = request.scope === 'all'
+    const targetCount = request.targets.length
+    const targetNames = exportAll ? [] : request.targets.map((target) => target.name)
+    const targetLabel = exportAll
+      ? `全部 ${targetCount} 个聊天`
+      : targetNames.length > 1
+        ? `${targetNames[0]} 等 ${targetNames.length} 个聊天`
+        : targetNames[0]
     const task: ExportTaskRecord = {
       jobId: request.jobId,
-      targetIds: request.targets.map((target) => target.userMd5),
+      scope: request.scope,
+      allContactTypes: request.allContactTypes,
+      targetIds: exportAll ? [] : request.targets.map((target) => target.userMd5),
       targetNames,
       targetLabel,
       format: request.format,
@@ -798,7 +805,7 @@ function App(): React.ReactElement {
         })
         setStartupProgress({
           title: '正在加载账号信息...',
-          subtitle: '即将进入 WechatExplorer',
+          subtitle: '即将进入 TraceMemo',
           detail: '正在读取联系人和当前账号',
           percent: 70
         })
@@ -1678,6 +1685,8 @@ function App(): React.ReactElement {
         <ReportTaskStatusPanel
           phase={reportGeneration.phase}
           error={reportGeneration.error}
+          voiceTranscriptionProgress={reportGeneration.voiceTranscriptionProgress}
+          voiceTranscriptionEnabled={summaryMessageTypes.includes('voice')}
           onRetry={() => {
             reportGeneration.resetGenerationStatus()
             void reportGeneration.retry()
@@ -1805,7 +1814,7 @@ function App(): React.ReactElement {
         ? autoConnectSource === 'env'
           ? '检测到环境变量中的密钥'
           : '使用上次安全保存的密钥'
-        : 'WechatExplorer')
+        : 'TraceMemo')
     return (
       <div className={`boot-splash ${appearanceSettings.showStartupProgress ? '' : 'is-quiet'}`}>
         <div className="boot-splash-spinner" aria-hidden />

@@ -11,7 +11,9 @@ import { imageFileQuality, imageQualityRank } from '../shared/image-quality'
 import { loadSettings } from './services/settings-store'
 import { Wcdb4Client } from './wcdb4-client'
 
-const imageDecryptDebugEnabled = process.env['WECHATEXPLORER_DEBUG_IMAGE'] === '1'
+const imageDecryptDebugEnabled =
+  process.env['TRACEMEMO_DEBUG_IMAGE'] === '1' ||
+  (!process.env['TRACEMEMO_DEBUG_IMAGE'] && process.env['WECHATEXPLORER_DEBUG_IMAGE'] === '1')
 const imageDecryptLog = (...args: unknown[]): void => {
   if (imageDecryptDebugEnabled) console.log(...args)
 }
@@ -562,7 +564,7 @@ export class ImageDecryptService {
   }
 
   /**
-   * 根据 md5 查找图片文件 (WechatExplorer 风格)
+   * 根据 md5 查找图片文件
    */
   findImageFile(md5?: string, imageDatName?: string, options?: ImageFindOptions): string | null {
     const allowThumbnail = options?.allowThumbnail !== false
@@ -648,7 +650,7 @@ export class ImageDecryptService {
       }
     }
 
-    // 尝试 WechatExplorer 的目录结构: msg/attach/{hash}/{YYYY-MM}/Img/
+    // 尝试 TraceMemo 兼容的微信目录结构: msg/attach/{hash}/{YYYY-MM}/Img/
     if (!existsSync(attachDir)) {
       imageDecryptLog('[ImageDecrypt] attach dir not found:', attachDir)
       return rememberPath(
