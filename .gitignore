@@ -1,0 +1,32 @@
+# Build artifacts
+electron/resources/app/out.bak*
+electron/resources/app.asar*
+electron/resources/app.asar.unpacked/
+
+# Dependencies
+electron/resources/app/node_modules/
+
+# Temporary files
+*.tmp
+css_extracted_rules_tmp.txt
+extract_css_rules_tmp.js
+
+# Locale files (large, can be re-downloaded)
+electron/locales/
+
+# OS files
+.DS_Store
+
+# LRNEV workspace (local only)
+.lrnev/
+# Compiled output
+electron/resources/app/out/
+
+# Elevation helper
+electron/resources/elevate.exe
+
+# Log files
+**/*.log
+
+# Vulkan config
+electron/vk_swiftshader_icd.json
