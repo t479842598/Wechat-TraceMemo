@@ -386,6 +386,18 @@ handle('db:getGroupSnapshot', (md5) =>
       }
     : null
 )
+handle('db:getGroupSenderCounts', (md5, startTime, endTime) => {
+  const counts = new Map()
+  for (const message of fixture.messages[md5] || []) {
+    if (message.from === 'system') continue
+    if (startTime && (message.createTime || 0) < startTime) continue
+    if (endTime && (message.createTime || 0) > endTime) continue
+    const sender = message.senderId || message.name || ''
+    if (!sender) continue
+    counts.set(sender, (counts.get(sender) || 0) + 1)
+  }
+  return Array.from(counts.entries()).map(([sender, count]) => ({ sender, count }))
+})
 handle('db:getImage', (md5, datName, sessionId, options) =>
   md5 === 'unsupported'
     ? { success: false, error: '不支持的 DAT 版本' }

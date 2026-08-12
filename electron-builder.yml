@@ -70,6 +70,6 @@ appImage:
 npmRebuild: false
 publish:
   provider: github
-  owner: Wxw-Gu
-  repo: WechatExplorer
+  owner: t479842598
+  repo: Wechat-TraceMemo
   releaseType: release

@@ -1153,6 +1153,81 @@ export class Wcdb4Client {
     return total
   }
 
+  /**
+   * Aggregates non-system message counts per sender directly in SQL.
+   * Used by the group speaking-ranking view: the previous approach loaded the
+   * whole conversation into the renderer just to count senders, which froze
+   * the app for large groups. Returns `null` when the SQL channel is unavailable
+   * so callers can fall back to the message-based path.
+   */
+  async countMessagesBySenderAsync(
+    username: string,
+    startTime?: number,
+    endTime?: number
+  ): Promise<Array<{ sender: string; count: number }> | null> {
+    if (!this.wcdbGetMessageTableStats || !this.wcdbExecQuery) return null
+
+    let tables: Wcdb4MessageStore[]
+    try {
+      tables = await this.listMessageStoresAsync(username)
+    } catch (error) {
+      console.warn(`[WCDB4] sender count table stats failed username=${username}:`, error)
+      return null
+    }
+
+    const begin = this.normalizeTimestamp(startTime || 0)
+    const end = this.normalizeTimestamp(endTime || 0)
+    const where = [
+      '((("local_type" & 65535) NOT IN (10000, 10002)) OR (("local_type" & 65535) = 0))',
+      begin > 0 ? `"create_time" >= ${begin}` : '',
+      end > 0 ? `"create_time" <= ${end}` : ''
+    ].filter(Boolean)
+
+    const totals = new Map<string, number>()
+    for (const table of tables) {
+      try {
+        const columns = this.readMessageColumns(table)
+        const senderColumn = this.pickExistingColumn(columns, [
+          'sender_username',
+          'senderUsername',
+          'sender',
+          'fromUsername',
+          'from_username'
+        ])
+        if (!senderColumn) continue
+        const sql = `SELECT ${this.quoteSqlIdentifier(senderColumn)} AS sender, COUNT(*) AS cnt FROM ${this.quoteSqlIdentifier(table.tableName)} WHERE ${where.join(' AND ')} GROUP BY ${this.quoteSqlIdentifier(senderColumn)}`
+        const rows = await this.callJsonAsync<Record<string, unknown>[]>(
+          this.wcdbExecQuery as unknown as KoffiAsyncFunction,
+          'message',
+          table.dbPath,
+          sql
+        )
+        for (const row of Array.isArray(rows) ? rows : []) {
+          const sender = this.pickString(row, ['sender'])
+          if (!sender) continue
+          const count = Number(this.pickValue(row, ['cnt', 'count', 'COUNT(*)']))
+          if (Number.isFinite(count)) totals.set(sender, (totals.get(sender) || 0) + count)
+        }
+      } catch (error) {
+        console.warn(
+          `[WCDB4] sender count failed username=${username} db=${table.dbPath} table=${table.tableName}:`,
+          error
+        )
+        return null
+      }
+    }
+
+    return Array.from(totals.entries()).map(([sender, count]) => ({ sender, count }))
+  }
+
+  private pickExistingColumn(
+    columns: { name: string; declaration: string }[],
+    candidates: string[]
+  ): string | null {
+    const names = new Set(columns.map((column) => column.name))
+    return candidates.find((candidate) => names.has(candidate)) || null
+  }
+
   private readSessionRows(): Record<string, unknown>[] {
     if (!this.wcdbGetSessions) return []
     const rows = this.callJson<Record<string, unknown>[]>((handle, outJson) =>

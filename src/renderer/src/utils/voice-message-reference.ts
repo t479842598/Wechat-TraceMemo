@@ -89,19 +89,33 @@ export async function transcribeVoiceMessages(
     }
   }
 
-  for (const item of pendingItems) {
-    const recognition = await dependencies.recognize(item.reference!)
-    const transcript = recognition.transcript?.trim()
-    if (recognition.success && transcript) {
-      result[item.index].voiceTranscript = transcript
-      result[item.index].voiceTranscriptError = undefined
-      progress.succeeded += 1
-    } else {
-      result[item.index].voiceTranscriptError = recognition.error || '语音转写失败'
-      progress.failed += 1
+  // 有界并发转写：串行逐条 await 在语音消息较多时会让界面长时间停留在
+  // “转写中”（每次都是完整 IPC 往返 + 模型推理）。改为固定并发度并行处理，
+  // 并保持按原始顺序写入结果、逐条上报进度，避免长任务期间界面失去响应。
+  const CONCURRENCY = 3
+  let nextIndex = 0
+  const runTranscription = async (): Promise<void> => {
+    while (true) {
+      const itemIndex = nextIndex
+      nextIndex += 1
+      if (itemIndex >= pendingItems.length) return
+      const item = pendingItems[itemIndex]
+      const recognition = await dependencies.recognize(item.reference!)
+      const transcript = recognition.transcript?.trim()
+      if (recognition.success && transcript) {
+        result[item.index].voiceTranscript = transcript
+        result[item.index].voiceTranscriptError = undefined
+        progress.succeeded += 1
+      } else {
+        result[item.index].voiceTranscriptError = recognition.error || '语音转写失败'
+        progress.failed += 1
+      }
+      dependencies.onProgress({ ...progress, processed: progress.processed + 1 })
+      progress.processed += 1
     }
-    dependencies.onProgress({ ...progress, processed: progress.processed + 1 })
-    progress.processed += 1
   }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, pendingItems.length) }, () => runTranscription())
+  )
   return result
 }

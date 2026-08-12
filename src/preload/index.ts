@@ -87,6 +87,12 @@ const api = {
     options?: { limit?: number }
   ) => ipcRenderer.invoke('db:getMessages', userMd5, startTime, endTime, options),
   getGroupSnapshot: (userMd5: string) => ipcRenderer.invoke('db:getGroupSnapshot', userMd5),
+  getGroupSenderCounts: (
+    userMd5: string,
+    startTime?: number,
+    endTime?: number
+  ): Promise<Array<{ sender: string; count: number }> | null> =>
+    ipcRenderer.invoke('db:getGroupSenderCounts', userMd5, startTime, endTime),
   search: (keyword: string) => ipcRenderer.invoke('db:search', keyword),
   searchKnowledge: (request: KnowledgeSearchIpcRequest): Promise<KnowledgeSearchIpcResult> =>
     ipcRenderer.invoke('knowledge:search', request),

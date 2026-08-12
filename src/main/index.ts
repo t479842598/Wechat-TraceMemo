@@ -1045,6 +1045,12 @@ app.whenReady().then(async () => {
     return snapshot
   })
 
+  ipcMain.handle(
+    'db:getGroupSenderCounts',
+    async (_, userMd5: string, startTime?: number, endTime?: number) =>
+      chat.countMessagesBySenderAsync(userMd5, startTime, endTime)
+  )
+
   ipcMain.handle('db:search', (_, keyword: string) => chat.searchMessages(keyword))
   ipcMain.handle(
     'knowledge:search',

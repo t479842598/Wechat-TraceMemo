@@ -201,6 +201,11 @@ declare global {
           avatar: string
         }[]
       } | null>
+      getGroupSenderCounts: (
+        userMd5: string,
+        startTime?: number,
+        endTime?: number
+      ) => Promise<Array<{ sender: string; count: number }> | null>
       search: (keyword: string) => Promise<string | null>
       searchKnowledge: (request: KnowledgeSearchIpcRequest) => Promise<KnowledgeSearchIpcResult>
       runAiSearch: (request: AiSearchPipelineRequest) => Promise<AiSearchPipelineResult>

@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   onRefresh?: () => void
   onRefreshData?: () => void
   onOpenAiSettings: () => void
+  onOpenGroupManager?: () => void
 }
 
 export function ChatHeader({
@@ -26,7 +27,8 @@ export function ChatHeader({
   onContentFilterChange,
   onRefresh,
   onRefreshData,
-  onOpenAiSettings
+  onOpenAiSettings,
+  onOpenGroupManager
 }: ChatHeaderProps): React.ReactElement {
   const [searchOpen, setSearchOpen] = useState(Boolean(contentFilter))
   const [moreOpen, setMoreOpen] = useState(false)
@@ -88,6 +90,17 @@ export function ChatHeader({
         <button type="button" className="chat-icon-button" onClick={onRefresh} title="刷新聊天记录">
           <RefreshIcon />
         </button>
+        {isGroupChat && onOpenGroupManager && (
+          <button
+            type="button"
+            className="chat-tool-button"
+            onClick={onOpenGroupManager}
+            title="群管理：成员、发言排行与退群监控"
+          >
+            <span className="chat-group-manager-icon">👥</span>
+            <span>群管理</span>
+          </button>
+        )}
         <div className="chat-menu" ref={moreRef}>
           <button
             type="button"

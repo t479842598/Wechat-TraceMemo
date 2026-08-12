@@ -488,6 +488,20 @@ export async function countVoiceMessagesAsync(
   return dbRef.getUserVoiceMessageCountAsync(userMd5, startTime, endTime)
 }
 
+/**
+ * Aggregate non-system message counts per sender without hydrating full
+ * messages. Used by the group speaking-ranking view; keeps large conversations
+ * from being transferred to the renderer just to count senders.
+ */
+export async function countMessagesBySenderAsync(
+  userMd5: string,
+  startTime?: number,
+  endTime?: number
+): Promise<Array<{ sender: string; count: number }> | null> {
+  if (!dbRef) return null
+  return dbRef.countUserMessagesBySenderAsync(userMd5, startTime, endTime)
+}
+
 export function getGroupSnapshot(userMd5: string): GroupSnapshot | null {
   if (!dbRef) return null
   const wcdb4Client = dbRef.getWcdb4Client()

@@ -563,6 +563,9 @@ export const buildGroupReportFacts = async (
   isGroup: boolean,
   reportMode: ReportMode
 ): Promise<GroupReportFactsSnapshot> => {
+  // 进入大消息量统计前先让出一帧，让“整理日报输入”的加载动画能先渲染出来，
+  // 避免数万条消息的同步统计把渲染进程占死导致界面看起来“没有响应”。
+  await new Promise((resolve) => setTimeout(resolve, 0))
   const transcriptRows = messages.map((message) => ({
     id: message.id,
     datetime: message.datetime,

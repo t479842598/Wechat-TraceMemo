@@ -5,6 +5,7 @@ import { ChatStatusBar } from './chat/ChatStatusBar'
 import { DataTrustBar } from './chat/DataTrustBar'
 import { EmptyConversationState } from './chat/EmptyConversationState'
 import { MessageList } from './chat/MessageList'
+import { GroupLeaveEvent, GroupManagerPanel } from './group/GroupManagerPanel'
 
 interface ChatWindowProps {
   contact: Contact | null
@@ -20,6 +21,7 @@ interface ChatWindowProps {
   onCreateGroupReport?: () => void
   isAiLoading?: boolean
   jumpToTime?: number | null
+  groupLeaveEvents?: GroupLeaveEvent[]
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -35,7 +37,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onLoadOlderMessages,
   onCreateGroupReport,
   isAiLoading = false,
-  jumpToTime
+  jumpToTime,
+  groupLeaveEvents = []
 }) => {
   const isGroupChat = Boolean(
     contact?.type === 'group' || contact?.m_nsUsrName?.endsWith('@chatroom')
@@ -53,7 +56,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [showAvatar, setShowAvatar] = useState(true)
   const [isAtLatest, setIsAtLatest] = useState(true)
   const [isReloadingAvatars, setIsReloadingAvatars] = useState(false)
+  const [isGroupManagerOpen, setIsGroupManagerOpen] = useState(false)
   const previousScrollTopRef = useRef(0)
+
+  useEffect(() => {
+    setIsGroupManagerOpen(false)
+  }, [contact?.md5])
 
   const scrollToBottom = useCallback((): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
@@ -200,6 +208,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onRefresh={onRefresh}
         onRefreshData={onRefreshData}
         onOpenAiSettings={onCreateGroupReport || (() => undefined)}
+        onOpenGroupManager={isGroupChat ? () => setIsGroupManagerOpen(true) : undefined}
       />
       <DataTrustBar messageCount={messages.length} />
       <MessageList
@@ -275,6 +284,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {isGroupManagerOpen && contact && (
+        <GroupManagerPanel
+          contact={contact}
+          leaveEvents={groupLeaveEvents}
+          onClose={() => setIsGroupManagerOpen(false)}
+        />
       )}
     </div>
   )

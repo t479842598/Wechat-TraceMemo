@@ -31,6 +31,7 @@ import {
   sortMessagesChronologically
 } from './utils/message-pages'
 import { enrichQuotedMessages } from './utils/quoted-messages'
+import type { GroupLeaveEvent } from './components/group/GroupManagerPanel'
 
 const SIDEBAR_MIN_WIDTH = 260
 const SIDEBAR_MAX_WIDTH = 380
@@ -260,6 +261,7 @@ function App(): React.ReactElement {
   const currentGroupSnapshotRef = React.useRef<GroupSnapshot | null>(null)
   const syntheticGroupMessagesRef = React.useRef<Record<string, Message[]>>({})
   const groupMemberMetaRef = React.useRef<Record<string, Map<string, GroupMemberMeta>>>({})
+  const [groupLeaveEvents, setGroupLeaveEvents] = React.useState<GroupLeaveEvent[]>([])
   const messageHistoryRef = React.useRef<Message[]>([])
   const messagesRef = React.useRef<Message[]>([])
   const messagePrefetchRef = React.useRef<Promise<void> | null>(null)
@@ -940,6 +942,40 @@ function App(): React.ReactElement {
       if (!contact || contact.type !== 'group') return null
       const snapshot = await logGroupSnapshot(contact, 'load-member-meta')
       if (!snapshot) return null
+      const previous = currentGroupSnapshotRef.current
+      // 退群监控：对比上一次快照，检测成员减少并记录退群事件、合成退群提示消息。
+      if (previous && previous.roomId === snapshot.roomId) {
+        const leaveMessages = buildSyntheticGroupMessages(
+          previous,
+          snapshot,
+          messageHistoryRef.current
+        )
+        if (leaveMessages.length > 0) {
+          const roomKey = snapshot.roomId || contact.md5
+          syntheticGroupMessagesRef.current[roomKey] = [
+            ...(syntheticGroupMessagesRef.current[roomKey] || []),
+            ...leaveMessages
+          ]
+          const now = Math.floor(Date.now() / 1000)
+          const events: GroupLeaveEvent[] = leaveMessages.map((message) => {
+            const wxidMatch = message.id.match(/synthetic-leave:[^:]+:([^:]+):/)
+            return {
+              roomId: roomKey,
+              wxid: wxidMatch?.[1] || message.name || '',
+              name: message.content.replace(/ 退出了群聊$/, ''),
+              time: message.createTime || now
+            }
+          })
+          if (events.length) {
+            setGroupLeaveEvents((current) => [...events, ...current].slice(0, 200))
+          }
+          console.log(
+            `[GroupMonitor] leave detected roomId=${roomKey} events=${events
+              .map((event) => event.name)
+              .join(' | ')}`
+          )
+        }
+      }
       storeGroupMemberMeta(contact, snapshot)
       return snapshot
     },
@@ -1052,6 +1088,7 @@ function App(): React.ReactElement {
     setSelfInfo(null)
     setIsMessagesLoading(false)
     setIsNativeMonitorActive(false)
+    setGroupLeaveEvents([])
     setReportNotice('')
     setDbKeyStatus('已断开当前连接，可重新输入或获取数据库密钥')
     setDbKeyStatusKind('normal')
@@ -1077,6 +1114,7 @@ function App(): React.ReactElement {
     currentGroupSnapshotRef.current = null
     groupMemberMetaRef.current = {}
     syntheticGroupMessagesRef.current = {}
+    setGroupLeaveEvents([])
     setDiscoveredAccounts((current) =>
       current.some((item) => item.id === account.id) ? current : [account]
     )
@@ -1300,6 +1338,41 @@ function App(): React.ReactElement {
         const latestMessages = await window.api.getMessages(contactMd5, undefined, undefined, {
           limit: INITIAL_MESSAGE_COUNT
         })
+        // 群聊：周期性对比成员快照，检测退群并在消息流中合成退群提示。
+        if (!disposed && selectedContact.type === 'group') {
+          const snapshot = await logGroupSnapshot(selectedContact, 'monitor-leave-check')
+          if (!disposed && snapshot) {
+            const previous = currentGroupSnapshotRef.current
+            if (previous && previous.roomId === snapshot.roomId) {
+              const leaveMessages = buildSyntheticGroupMessages(
+                previous,
+                snapshot,
+                [...messageHistoryRef.current, ...latestMessages]
+              )
+              if (leaveMessages.length > 0) {
+                const roomKey = snapshot.roomId || contactMd5
+                syntheticGroupMessagesRef.current[roomKey] = [
+                  ...(syntheticGroupMessagesRef.current[roomKey] || []),
+                  ...leaveMessages
+                ]
+                const now = Math.floor(Date.now() / 1000)
+                const events: GroupLeaveEvent[] = leaveMessages.map((message) => {
+                  const wxidMatch = message.id.match(/synthetic-leave:[^:]+:([^:]+):/)
+                  return {
+                    roomId: roomKey,
+                    wxid: wxidMatch?.[1] || message.name || '',
+                    name: message.content.replace(/ 退出了群聊$/, ''),
+                    time: message.createTime || now
+                  }
+                })
+                if (events.length) {
+                  setGroupLeaveEvents((current) => [...events, ...current].slice(0, 200))
+                }
+              }
+            }
+            storeGroupMemberMeta(selectedContact, snapshot)
+          }
+        }
         const nextMessages = applyGroupMemberMeta(
           selectedContact,
           mergeSyntheticMessages(selectedContact, latestMessages)
@@ -1346,6 +1419,7 @@ function App(): React.ReactElement {
     isNativeMonitorActive,
     selectedContact,
     logGroupSnapshot,
+    storeGroupMemberMeta,
     applyGroupMemberMeta,
     mergeSyntheticMessages
   ])
@@ -1610,6 +1684,7 @@ function App(): React.ReactElement {
         onCreateGroupReport={handleOpenReportWorkspace}
         isAiLoading={reportGeneration.isGenerating}
         jumpToTime={archiveJumpTime}
+        groupLeaveEvents={groupLeaveEvents}
       />
     </div>
   )

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AppUpdateState } from '../../../../../shared/app-update'
 
-const REPOSITORY_URL = 'https://github.com/Wxw-Gu/WechatExplorer'
+const REPOSITORY_URL = 'https://github.com/t479842598/Wechat-TraceMemo'
 const RELEASES_URL = `${REPOSITORY_URL}/releases`
 
 function formatBytes(value?: number): string {

@@ -12,6 +12,7 @@ test-results/
 resources/connectors/wechat/
 .omc
 .codex/
+.reasonix/
 docs/design/
 .lrnev/
 docs/ui-redesign-plan.md

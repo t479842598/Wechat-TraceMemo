@@ -4,6 +4,56 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号沿用原版上游 tag，附加本仓库修订标记。
 
+## [2.2.0] - 2026-08-12
+
+### 新增
+
+- **同步上游 TraceMemo v2.2.0（WechatExplorer 品牌升级为 TraceMemo（迹忆））**
+  - 完成 WechatExplorer → TraceMemo 品牌迁移：应用名、关于页、安装包标识统一为 TraceMemo（迹忆）。
+  - 支持旧版本设置、Knowledge、Token 和 AI 配置迁移，迁移不覆盖、不删除旧数据。
+  - 支持全部聊天按会话分目录导出。
+  - 群聊日报支持选择群成员、完善语音转写缓存。
+  - 新增关闭窗口时退出或保留后台运行的选择。
+  - 优化 Knowledge 管理、缓存清理和连接提示。
+  - 修复群聊日报成员名称显示错误、高清图片覆盖缩略图、无 MD5 文件名视频导出、大体积 Knowledge 迁移无窗口等上游问题。
+- **群管理面板**
+  - 聊天头部（仅群聊）新增「群管理」按钮，打开面板可查看群成员列表、退群记录与发言排行。
+  - 发言排行支持近 7 天 / 近 30 天 / 全部切换，前三名高亮 + 占比条，未发言成员单独列出。
+  - 退群实时监控：基于数据库变更 + 群快照对比，检测到成员减少即在聊天流插入「XXX 退出了群聊」合成消息并记录事件。
+  - 历史退群检测：读取该群全部聊天记录发送人，与当前成员快照对比，识别「曾发言但已不在群内」的成员（按最后发言时间倒序），与实时监控事件合并展示。
+- **群聊日报自定义日期范围**（本仓库定制，v2.1.9-tracememo.1 引入，随 v2.2.0 保留）
+  - 「总结范围」开放自定义开始/结束日期，支持任意日期区间生成日报。
+
+### 变更
+
+- 语音转写由逐条串行改为有界并发（3 路）转写，大量语音消息时界面不再长时间停留在「转写中」，进度动画持续刷新。
+- 日报生成进入大消息量统计前先让出一帧，让「整理日报输入」加载动画先渲染，避免数万条消息同步统计造成界面无响应。
+- 发布流水线移除 macOS x64 构建（上游 v2.2.0 起仅支持 Apple Silicon arm64）。
+
+### 修复
+
+- 修复日报生成、语音转写、AI 搜索等长任务期间界面「没有响应」的卡顿问题。
+
+### 影响文件
+
+- `src/renderer/src/components/group/GroupManagerPanel.tsx`、`src/renderer/src/styles/group-manager.scss`（新增，群管理面板）
+- `src/renderer/src/App.tsx`、`src/renderer/src/components/ChatWindow.tsx`、`src/renderer/src/components/chat/ChatHeader.tsx`（群管理入口与退群监控）
+- `src/main/index.ts`、`src/preload/index.ts`、`src/preload/index.d.ts`、`src/main/services/chat-service.ts`、`src/main/wechat-db.ts`、`src/main/wcdb4-client.ts`（发言排行统计链路）
+- `src/renderer/src/utils/voice-message-reference.ts`、`src/renderer/src/utils/group-report-facts.ts`（卡顿修复）
+- `electron-builder.yml`、`package.json`、`src/renderer/src/features/settings/pages/AboutPage.tsx`（品牌与仓库标识）
+- `.github/workflows/release.yml`（移除 macOS x64 构建）
+
+### 验证
+
+- `tsc --noEmit`（node / web）均通过。
+- 单元测试 42 文件 230/230、组件测试、集成测试全部通过。
+- eslint 0 errors。
+
+### 回滚方式
+
+- 源码：`git reset --hard <上一提交>` 可整体回退；单文件可 `git checkout HEAD -- <file>`。
+- 已安装应用：备份并还原 `resources/app/out` 目录。
+
 ## [2.1.9-tracememo.1] - 2026-08-09
 
 ### 新增

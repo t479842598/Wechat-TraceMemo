@@ -244,6 +244,17 @@ export class WechatDb {
     return this.wcdb4Client.countVoiceMessagesAsync(username, startTime, endTime)
   }
 
+  public async countUserMessagesBySenderAsync(
+    userMd5: string,
+    startTime?: number,
+    endTime?: number
+  ): Promise<Array<{ sender: string; count: number }> | null> {
+    this.ensureChatTableMapping()
+    const username = this.chatMd5ToUsername.get(userMd5)
+    if (!username) return null
+    return this.wcdb4Client.countMessagesBySenderAsync(username, startTime, endTime)
+  }
+
   public searchAllMessages(keyword: string): string | null {
     const lowerKeyword = keyword.trim().toLowerCase()
     if (!lowerKeyword) return null

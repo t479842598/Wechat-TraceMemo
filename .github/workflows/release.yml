@@ -57,10 +57,6 @@ jobs:
         if: runner.os == 'Windows'
         run: pnpm build:win
 
-      - name: Build & publish (macOS x64)
-        if: runner.os == 'macOS'
-        run: pnpm build:mac:x64
-
       - name: Build & publish (macOS arm64)
         if: runner.os == 'macOS'
         run: pnpm build:mac:arm64
