@@ -1,7 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { GroupReportExportRequest } from '../shared/group-report'
-import type { SaveGeneratedReportRequest } from '../shared/report-history'
+import type {
+  GroupReportExportRequest,
+  GroupReportRenderSnapshotExportRequest
+} from '../shared/group-report'
+import type {
+  SaveGeneratedReportRequest,
+  UpdateGeneratedReportTemplateRequest
+} from '../shared/report-history'
 import type {
   AIChatRequestOptions,
   AiSearchExternalAuthorizationRequest,
@@ -48,6 +54,10 @@ import type {
   KnowledgeSearchIpcRequest,
   KnowledgeSearchIpcResult
 } from '../shared/knowledge'
+import type {
+  PublishWechatShareCardRequest,
+  WechatShareServiceConfig
+} from '../shared/wechat-share-card'
 
 // 渲染器的自定义 API
 const api = {
@@ -120,6 +130,7 @@ const api = {
     ipcRenderer.invoke('ai:chat', messages, options),
   listAIProviders: () => ipcRenderer.invoke('ai:listProviders'),
   getAIRuntimeConfig: () => ipcRenderer.invoke('ai:getRuntimeConfig'),
+  getAIVisionRuntimeConfig: () => ipcRenderer.invoke('ai:getVisionRuntimeConfig'),
   getAiSearchProviderStatus: (): Promise<AiSearchProviderStatus> =>
     ipcRenderer.invoke('ai-search:getProviderStatus'),
   authorizeAiSearchExternalProvider: (
@@ -212,12 +223,23 @@ const api = {
   },
   exportGroupReport: (request: GroupReportExportRequest) =>
     ipcRenderer.invoke('report:export', request),
+  exportGroupReportSnapshot: (request: GroupReportRenderSnapshotExportRequest) =>
+    ipcRenderer.invoke('report:exportSnapshot', request),
+  prepareGeneratedReportTemplateSwitch: (reportId: string) =>
+    ipcRenderer.invoke('report:prepareTemplateSwitch', { reportId }),
   listGeneratedReports: () => ipcRenderer.invoke('report:listGenerated'),
   saveGeneratedReport: (request: SaveGeneratedReportRequest) =>
     ipcRenderer.invoke('report:saveGenerated', request),
+  updateGeneratedReportTemplate: (request: UpdateGeneratedReportTemplateRequest) =>
+    ipcRenderer.invoke('report:updateGeneratedTemplate', request),
   deleteGeneratedReport: (reportId: string) =>
     ipcRenderer.invoke('report:deleteGenerated', reportId),
   revealGroupReport: (filePath: string) => ipcRenderer.invoke('report:reveal', filePath),
+  getWechatShareConfig: () => ipcRenderer.invoke('wechat-share:getConfig'),
+  saveWechatShareConfig: (config: WechatShareServiceConfig) =>
+    ipcRenderer.invoke('wechat-share:saveConfig', config),
+  publishWechatShareCard: (request: PublishWechatShareCardRequest) =>
+    ipcRenderer.invoke('wechat-share:publish', request),
   getSavedDbKey: (accountRoot: string) => ipcRenderer.invoke('key:getSavedDbKey', accountRoot),
   getDatabaseKeyEnvironment: () => ipcRenderer.invoke('key:getEnvironment'),
   readDatabaseKeyClipboard: () => ipcRenderer.invoke('key:readClipboardDbKey'),

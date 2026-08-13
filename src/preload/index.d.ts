@@ -1,12 +1,19 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import { Contact, Message } from '../shared/types'
-import { GroupReportExportRequest, GroupReportExportResult } from '../shared/group-report'
+import {
+  GroupReportExportRequest,
+  GroupReportExportResult,
+  GroupReportRenderSnapshotExportRequest
+} from '../shared/group-report'
 import { LocalApiTestRequest, LocalApiTestResponse } from '../shared/local-api-test'
 import {
   DeleteGeneratedReportResult,
   ReportHistoryResult,
   SaveGeneratedReportRequest,
-  SaveGeneratedReportResult
+  SaveGeneratedReportResult,
+  PrepareGeneratedReportTemplateSwitchResult,
+  UpdateGeneratedReportTemplateRequest,
+  UpdateGeneratedReportTemplateResult
 } from '../shared/report-history'
 import type {
   DatabaseKeyEnvironment,
@@ -33,6 +40,7 @@ import type {
   AIProviderConfig,
   AIProviderListResult,
   AIRuntimeModelConfig,
+  AIVisionRuntimeConfig,
   AIVisionTestRequest,
   AIVisionTestResult,
   LegacyAIConfig
@@ -72,6 +80,12 @@ import type {
   KnowledgeSearchIpcRequest,
   KnowledgeSearchIpcResult
 } from '../shared/knowledge'
+import type {
+  PublishWechatShareCardRequest,
+  PublishWechatShareCardResult,
+  WechatShareServiceConfig,
+  WechatShareServiceConfigResult
+} from '../shared/wechat-share-card'
 
 export type ParsedContent =
   | { type: 'text'; content: string }
@@ -230,6 +244,7 @@ declare global {
       }>
       listAIProviders: () => Promise<AIProviderListResult>
       getAIRuntimeConfig: () => Promise<AIRuntimeModelConfig>
+      getAIVisionRuntimeConfig: () => Promise<AIVisionRuntimeConfig>
       getAiSearchProviderStatus: () => Promise<AiSearchProviderStatus>
       authorizeAiSearchExternalProvider: (
         request: AiSearchExternalAuthorizationRequest
@@ -310,12 +325,28 @@ declare global {
       revealExport: (path: string) => Promise<{ success: boolean; error?: string }>
       onExportProgress: (callback: (progress: ExportJobProgress) => void) => () => void
       exportGroupReport: (request: GroupReportExportRequest) => Promise<GroupReportExportResult>
+      exportGroupReportSnapshot: (
+        request: GroupReportRenderSnapshotExportRequest
+      ) => Promise<GroupReportExportResult>
+      prepareGeneratedReportTemplateSwitch: (
+        reportId: string
+      ) => Promise<PrepareGeneratedReportTemplateSwitchResult>
       listGeneratedReports: () => Promise<ReportHistoryResult>
       saveGeneratedReport: (
         request: SaveGeneratedReportRequest
       ) => Promise<SaveGeneratedReportResult>
+      updateGeneratedReportTemplate: (
+        request: UpdateGeneratedReportTemplateRequest
+      ) => Promise<UpdateGeneratedReportTemplateResult>
       deleteGeneratedReport: (reportId: string) => Promise<DeleteGeneratedReportResult>
       revealGroupReport: (filePath: string) => Promise<{ success: boolean; error?: string }>
+      getWechatShareConfig: () => Promise<WechatShareServiceConfigResult>
+      saveWechatShareConfig: (
+        config: WechatShareServiceConfig
+      ) => Promise<WechatShareServiceConfigResult>
+      publishWechatShareCard: (
+        request: PublishWechatShareCardRequest
+      ) => Promise<PublishWechatShareCardResult>
       getSavedDbKey: (accountRoot: string) => Promise<DatabaseKeyStorageResult>
       getDatabaseKeyEnvironment: () => Promise<DatabaseKeyEnvironment>
       readDatabaseKeyClipboard: () => Promise<{

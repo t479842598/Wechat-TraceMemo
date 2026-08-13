@@ -12,6 +12,21 @@ export type ImageCategory =
 
 export type ImageImportance = 'low' | 'medium' | 'high'
 
+/** 日报图片理解结果最多复用 10 分钟；旧记录保留在磁盘，仅不再作为缓存命中。 */
+export const IMAGE_INSIGHT_CACHE_TTL_MS = 10 * 60 * 1000
+
+export const isFreshImageInsight = (
+  insight: Pick<ImageInsight, 'updatedAt'> | null | undefined,
+  now = Date.now()
+): boolean =>
+  Boolean(
+    insight &&
+    Number.isFinite(insight.updatedAt) &&
+    insight.updatedAt > 0 &&
+    now >= insight.updatedAt &&
+    now - insight.updatedAt < IMAGE_INSIGHT_CACHE_TTL_MS
+  )
+
 /**
  * 单张微信图片的 AI 理解结果(持久化到 image-insights.json)
  *
@@ -57,6 +72,9 @@ export interface ImageAnalysisRequest {
   sender: string
   sentAt: number
   sessionId: string
+  /** 日报局部选择的图片理解模型；未传时仍使用自动视觉路由。 */
+  providerId?: string
+  modelId?: string
   /** 强制重新分析(忽略缓存) */
   force?: boolean
 }
@@ -94,7 +112,7 @@ export interface ImageCandidateQuery {
   sessionId: string
   startTime: number
   endTime: number
-  /** 取 Top N,默认 3 */
+  /** 最多取 N 张,默认 3；服务端会将其限制在 0–3 */
   limit?: number
   /** 由 renderer 从已加载消息中提取的图片候选(包含热度信息) */
   inputs?: Array<{
@@ -108,3 +126,19 @@ export interface ImageCandidateQuery {
     interactionCount: number
   }>
 }
+
+/**
+ * A picture is considered hot only when it has observable follow-up activity.
+ * A bare image message (or a single passive reply) is not enough to enter the
+ * daily report's AI image selection. This keeps the "top 3" value an upper
+ * bound rather than a quota that fills every available slot.
+ */
+export const isHotImageCandidate = (input: {
+  responseCount: number
+  interactionCount: number
+}): boolean => input.responseCount >= 2 || (input.responseCount >= 1 && input.interactionCount >= 1)
+
+export const calculateImageHeatScore = (input: {
+  responseCount: number
+  interactionCount: number
+}): number => input.responseCount * 3 + input.interactionCount * 2 + 1

@@ -12,7 +12,12 @@ test-results/
 resources/connectors/wechat/
 .omc
 .codex/
+
 .reasonix/
+
+services/share-card-worker/.wrangler/
+services/share-card-worker/wrangler.local.jsonc
+
 docs/design/
 .lrnev/
 docs/ui-redesign-plan.md

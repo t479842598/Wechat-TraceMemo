@@ -32,14 +32,27 @@ import {
   inspectImageDecoderStatus,
   type DecodedImage
 } from './image-decrypt-service'
-import { exportGroupReport } from './group-report-service'
+import {
+  exportGroupReport,
+  exportGroupReportSnapshot,
+  extractGroupReportRenderSnapshot
+} from './group-report-service'
 import {
   deleteGeneratedReport,
   listGeneratedReports,
-  saveGeneratedReport
+  prepareGeneratedReportTemplateSwitch,
+  saveGeneratedReport,
+  updateGeneratedReportTemplate
 } from './report-history-service'
-import type { GroupReportExportRequest } from '../shared/group-report'
-import type { SaveGeneratedReportRequest } from '../shared/report-history'
+import type {
+  GroupReportExportRequest,
+  GroupReportRenderSnapshotExportRequest
+} from '../shared/group-report'
+import type {
+  SaveGeneratedReportRequest,
+  PrepareGeneratedReportTemplateSwitchRequest,
+  UpdateGeneratedReportTemplateRequest
+} from '../shared/report-history'
 import type {
   AIChatRequestOptions,
   AiSearchExternalAuthorizationRequest,
@@ -122,6 +135,12 @@ import { KnowledgeSearchService } from './knowledge/knowledge-search-service'
 import { AiSearchPipelineService } from './services/ai-search-pipeline-service'
 import { runLegacySafeStorageHelper } from './legacy-safe-storage-helper'
 import { runFirstLaunchMigration } from './app-data-migration'
+import { WechatShareConfigStore } from './wechat-share-config-store'
+import { WechatShareCardService } from './wechat-share-card-service'
+import type {
+  PublishWechatShareCardRequest,
+  WechatShareServiceConfig
+} from '../shared/wechat-share-card'
 
 // electron-vite can close the child's stdout/stderr after spawning Electron.
 // Plain console.error then throws EPIPE on a closed pipe and crashes the IPC
@@ -141,6 +160,8 @@ const imageKeyConfigService = new ImageKeyConfigService()
 const aiProviderService = new AIProviderService()
 const keyServiceMac = new KeyServiceMac()
 const keyServiceWin = new KeyServiceWin()
+const wechatShareConfigStore = new WechatShareConfigStore()
+const wechatShareCardService = new WechatShareCardService(wechatShareConfigStore)
 let tray: Tray | null = null
 let recallArchiveMonitor: RecallArchiveMonitor | null = null
 let recallProtectionGeneration = 0
@@ -1102,6 +1123,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('ai:listProviders', () => aiProviderService.list())
   ipcMain.handle('ai:getRuntimeConfig', () => aiProviderService.getRuntimeConfig())
+  ipcMain.handle('ai:getVisionRuntimeConfig', () => aiProviderService.getVisionRuntimeConfig())
   ipcMain.handle('ai:saveProvider', (_, provider: AIProviderConfig) =>
     aiProviderService.save(provider)
   )
@@ -1138,6 +1160,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('report:export', async (_, request: GroupReportExportRequest) => {
     return exportGroupReport(request)
   })
+  ipcMain.handle(
+    'report:exportSnapshot',
+    async (_, request: GroupReportRenderSnapshotExportRequest) => exportGroupReportSnapshot(request)
+  )
 
   ipcMain.handle('export:start', async (event, request: ExportRequest) => {
     const window = BrowserWindow.fromWebContents(event.sender)
@@ -1164,6 +1190,19 @@ app.whenReady().then(async () => {
     return saveGeneratedReport(request)
   })
 
+  ipcMain.handle(
+    'report:updateGeneratedTemplate',
+    async (_, request: UpdateGeneratedReportTemplateRequest) => {
+      return updateGeneratedReportTemplate(request)
+    }
+  )
+
+  ipcMain.handle(
+    'report:prepareTemplateSwitch',
+    async (_, request: PrepareGeneratedReportTemplateSwitchRequest) =>
+      prepareGeneratedReportTemplateSwitch(request.reportId, extractGroupReportRenderSnapshot)
+  )
+
   ipcMain.handle('report:deleteGenerated', async (_, reportId: string) => {
     return deleteGeneratedReport(reportId)
   })
@@ -1176,6 +1215,14 @@ app.whenReady().then(async () => {
       return { success: false, error: error instanceof Error ? error.message : String(error) }
     }
   })
+
+  ipcMain.handle('wechat-share:getConfig', async () => wechatShareConfigStore.status())
+  ipcMain.handle('wechat-share:saveConfig', async (_, config: WechatShareServiceConfig) =>
+    wechatShareConfigStore.save(config)
+  )
+  ipcMain.handle('wechat-share:publish', async (_, request: PublishWechatShareCardRequest) =>
+    wechatShareCardService.publish(request)
+  )
 
   ipcMain.handle(
     'db:getVoiceData',
