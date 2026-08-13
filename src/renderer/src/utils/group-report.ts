@@ -916,6 +916,10 @@ export interface CustomSummaryDateRange {
   startDate: string
   /** ISO 日期字符串 YYYY-MM-DD，本地时区 */
   endDate: string
+  /** 开始时间 HH:mm（本地时区），可选；缺省按当日 00:00 计算 */
+  startTime?: string
+  /** 结束时间 HH:mm（本地时区），可选；缺省按结束日整天（23:59:59）计算 */
+  endTime?: string
 }
 export type SummaryDateRange = PresetSummaryDateRange | CustomSummaryDateRange
 export type SummaryMessageType =
@@ -986,6 +990,15 @@ export const SUMMARY_TYPE_OPTIONS: {
   }
 ]
 
+/** 解析 "HH:mm" 为 [时, 分]，非法或空值按 00:00 处理 */
+const parseTimePart = (value?: string): [number, number] => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim())
+  if (!match) return [0, 0]
+  const hour = Math.min(23, Number(match[1]))
+  const minute = Math.min(59, Number(match[2]))
+  return [hour, minute]
+}
+
 export const getSummaryDateRange = (
   range: SummaryDateRange
 ): { startTime: number; endTime: number } => {
@@ -995,7 +1008,13 @@ export const getSummaryDateRange = (
   if (isCustomRange(range)) {
     const [sy, sm, sd] = range.startDate.split('-').map(Number)
     const [ey, em, ed] = range.endDate.split('-').map(Number)
-    const start = new Date(sy, (sm || 1) - 1, sd || 1).getTime() / 1000
+    const [startHour, startMinute] = parseTimePart(range.startTime)
+    const start = new Date(sy, (sm || 1) - 1, sd || 1, startHour, startMinute).getTime() / 1000
+    if (range.endTime) {
+      const [endHour, endMinute] = parseTimePart(range.endTime)
+      const end = new Date(ey, (em || 1) - 1, ed || 1, endHour, endMinute).getTime() / 1000
+      return { startTime: start, endTime: Math.min(end, endTime) }
+    }
     const endDay = new Date(ey, (em || 1) - 1, (ed || 1) + 1).getTime() / 1000
     return { startTime: start, endTime: Math.min(endDay - 1, endTime) }
   }

@@ -49,7 +49,11 @@ interface AiReportWorkspaceProps {
 }
 
 const rangeLabel = (range: SummaryDateRange): string => {
-  if (isCustomRange(range)) return `自定义 ${range.startDate} 至 ${range.endDate}`
+  if (isCustomRange(range)) {
+    const start = range.startTime ? `${range.startDate} ${range.startTime}` : range.startDate
+    const end = range.endTime ? `${range.endDate} ${range.endTime}` : range.endDate
+    return `自定义 ${start} 至 ${end}`
+  }
   if (range === 'yesterday') return '昨日'
   if (range === '7days') return '近 7 天'
   return '今天'

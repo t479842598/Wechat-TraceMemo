@@ -100,7 +100,18 @@ export async function transcribeVoiceMessages(
       nextIndex += 1
       if (itemIndex >= pendingItems.length) return
       const item = pendingItems[itemIndex]
-      const recognition = await dependencies.recognize(item.reference!)
+      // 单条语音识别失败（超时/推理异常）不应拖垮整批转写：该条在日报中按
+      // 原始语音呈现（[语音 N秒]），其余语音继续转写，避免再次出现
+      // 「语音转写 超时」导致整个日报生成失败。
+      let recognition: VoiceRecognitionResult
+      try {
+        recognition = await dependencies.recognize(item.reference!)
+      } catch (error) {
+        recognition = {
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      }
       const transcript = recognition.transcript?.trim()
       if (recognition.success && transcript) {
         result[item.index].voiceTranscript = transcript

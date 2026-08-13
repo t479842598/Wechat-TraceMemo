@@ -1555,8 +1555,15 @@ function App(): React.ReactElement {
         dateRange: (() => {
           if (summaryDateRange === 'yesterday') return '昨日'
           if (summaryDateRange === '7days') return '近 7 天'
-          if (isCustomRange(summaryDateRange))
-            return `自定义 ${summaryDateRange.startDate} 至 ${summaryDateRange.endDate}`
+          if (isCustomRange(summaryDateRange)) {
+            const customStart = summaryDateRange.startTime
+              ? `${summaryDateRange.startDate} ${summaryDateRange.startTime}`
+              : summaryDateRange.startDate
+            const customEnd = summaryDateRange.endTime
+              ? `${summaryDateRange.endDate} ${summaryDateRange.endTime}`
+              : summaryDateRange.endDate
+            return `自定义 ${customStart} 至 ${customEnd}`
+          }
           return '今天'
         })(),
         messageCount: reportGeneration.reportMessages.length,

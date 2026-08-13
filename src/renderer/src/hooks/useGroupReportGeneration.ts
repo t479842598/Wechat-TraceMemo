@@ -23,6 +23,9 @@ export type { VoiceTranscriptionProgress } from '../utils/voice-message-referenc
 
 const REPORT_STEP_TIMEOUT_MS = 90_000
 const REPORT_MODEL_TIMEOUT_BUFFER_MS = 10_000
+// 单条语音识别超时与主进程 RecognitionHost 的 120s 对齐，避免 worker 排队/长语音推理时被更短的
+// 渲染层超时提前误杀（此前 90s 先于主进程触发，导致「语音转写 超时」拖垮整个日报生成）。
+const VOICE_RECOGNITION_TIMEOUT_MS = 120_000
 
 export type ReportGenerationPhase =
   | 'idle'
@@ -389,7 +392,12 @@ export function useGroupReportGeneration({
           ) as Promise<VoiceModelStatus>,
         getCachedTranscript: (reference) =>
           withTimeout(window.api.getVoiceTranscriptSnapshot(reference), '读取语音缓存'),
-        recognize: (reference) => withTimeout(window.api.recognizeVoice(reference), '语音转写'),
+        recognize: (reference) =>
+          withTimeout(
+            window.api.recognizeVoice(reference),
+            '语音转写',
+            VOICE_RECOGNITION_TIMEOUT_MS
+          ),
         onProgress: setVoiceTranscriptionProgress
       })
     },

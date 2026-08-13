@@ -394,7 +394,8 @@
   color: var(--wxex-text-secondary);
 }
 
-.report-custom-field input[type='date'] {
+.report-custom-field input[type='date'],
+.report-custom-field input[type='time'] {
   min-height: 32px;
   padding: 0 8px;
   border: 1px solid var(--wxex-border);
@@ -404,7 +405,8 @@
   font: 13px/18px var(--wxex-font);
 }
 
-.report-custom-field input[type='date']:disabled {
+.report-custom-field input[type='date']:disabled,
+.report-custom-field input[type='time']:disabled {
   color: var(--wxex-text-muted);
   cursor: not-allowed;
   opacity: 0.75;

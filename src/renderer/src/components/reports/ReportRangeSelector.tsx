@@ -23,6 +23,13 @@ const todayISO = (): string => {
   return `${y}-${m}-${d}`
 }
 
+const nowTime = (): string => {
+  const now = new Date()
+  const h = String(now.getHours()).padStart(2, '0')
+  const m = String(now.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
+
 const isoDaysAgo = (days: number): string => {
   const date = new Date()
   date.setDate(date.getDate() - days)
@@ -44,6 +51,13 @@ export function ReportRangeSelector({
     isCustom ? value.startDate : isoDaysAgo(6)
   )
   const [customEnd, setCustomEnd] = useState<string>(isCustom ? value.endDate : todayISO())
+  const [customStartTime, setCustomStartTime] = useState<string>(
+    isCustom ? value.startTime || '00:00' : '00:00'
+  )
+  const [customEndTime, setCustomEndTime] = useState<string>(
+    // 结束时间默认取打开面板时的当前时刻，之后保持用户选择/该默认值，直到点击生成日报
+    isCustom ? value.endTime || nowTime() : nowTime()
+  )
 
   const countText =
     rangeState.status === 'loading'
@@ -52,24 +66,35 @@ export function ReportRangeSelector({
         ? rangeState.error
         : `${messageCount} 条消息`
 
+  const normalizeTime = (value: string): string => (value ? value.slice(0, 5) : '')
+
   const applyCustom = (): void => {
-    const start = customStart || isoDaysAgo(6)
-    const end = customEnd || todayISO()
-    if (start > end) {
-      onChange({ custom: true, startDate: end, endDate: start })
+    const startDate = customStart || isoDaysAgo(6)
+    const endDate = customEnd || todayISO()
+    const startTime = normalizeTime(customStartTime) || '00:00'
+    const endTime = normalizeTime(customEndTime) || nowTime()
+    if (`${startDate} ${startTime}` > `${endDate} ${endTime}`) {
+      onChange({
+        custom: true,
+        startDate: endDate,
+        endDate: startDate,
+        startTime: endTime,
+        endTime: startTime
+      })
       return
     }
-    onChange({ custom: true, startDate: start, endDate: end })
+    onChange({ custom: true, startDate, endDate, startTime, endTime })
   }
 
   const selectCustom = (): void => {
-    const start = customStart || isoDaysAgo(6)
-    const end = customEnd || todayISO()
-    const range: CustomSummaryDateRange = {
-      custom: true,
-      startDate: start <= end ? start : end,
-      endDate: start <= end ? end : start
-    }
+    const startDate = customStart || isoDaysAgo(6)
+    const endDate = customEnd || todayISO()
+    const startTime = normalizeTime(customStartTime) || '00:00'
+    const endTime = normalizeTime(customEndTime) || nowTime()
+    const range: CustomSummaryDateRange =
+      `${startDate} ${startTime}` <= `${endDate} ${endTime}`
+        ? { custom: true, startDate, endDate, startTime, endTime }
+        : { custom: true, startDate: endDate, endDate: startDate, startTime: endTime, endTime: startTime }
     onChange(range)
   }
 
@@ -113,6 +138,13 @@ export function ReportRangeSelector({
               onChange={(e) => setCustomStart(e.target.value)}
               onBlur={applyCustom}
             />
+            <input
+              type="time"
+              value={customStartTime}
+              disabled={disabled}
+              onChange={(e) => setCustomStartTime(e.target.value)}
+              onBlur={applyCustom}
+            />
           </label>
           <label className="report-custom-field">
             <span>结束</span>
@@ -122,6 +154,13 @@ export function ReportRangeSelector({
               disabled={disabled}
               min={customStart}
               onChange={(e) => setCustomEnd(e.target.value)}
+              onBlur={applyCustom}
+            />
+            <input
+              type="time"
+              value={customEndTime}
+              disabled={disabled}
+              onChange={(e) => setCustomEndTime(e.target.value)}
               onBlur={applyCustom}
             />
           </label>
