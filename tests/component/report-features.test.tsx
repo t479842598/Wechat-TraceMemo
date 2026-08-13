@@ -431,9 +431,9 @@ describe('daily report controls', () => {
       </>
     )
 
-    expect(screen.queryByRole('button', { name: '生成微信卡片' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '更多' }))
     expect(screen.getByRole('button', { name: '生成微信卡片' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '更多' }))
+    expect(screen.getByRole('button', { name: '打开文件夹' })).toBeVisible()
     expect(screen.getByText('文字模型')).toBeVisible()
     expect(screen.getByText('DeepSeek Chat')).toBeVisible()
     expect(screen.getByText('图片模型')).toBeVisible()
