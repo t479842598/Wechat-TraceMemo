@@ -507,6 +507,12 @@
     box-shadow 0.15s ease;
 }
 
+/* 下拉选项强制浅色背景，避免系统深色主题下黑底黑字看不到内容 */
+.settings-input option {
+  background: #fff;
+  color: #1f2429;
+}
+
 .settings-input:focus {
   border-color: #07c160;
   box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.12);

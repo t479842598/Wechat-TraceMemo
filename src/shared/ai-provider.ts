@@ -133,6 +133,21 @@ export interface AIVisionTestRequest {
   imageDataUrl: string
 }
 
+export interface AIListModelsRequest {
+  baseUrl: string
+  type: AIProviderType
+  auth: AIProviderAuth
+  apiKey?: string
+  extraHeaders?: Record<string, string>
+  timeoutMs?: number
+}
+
+export interface AIListModelsResult {
+  success: boolean
+  models?: Array<{ id: string; name: string }>
+  error?: string
+}
+
 export interface AIVisionTestResult {
   success: boolean
   providerName?: string

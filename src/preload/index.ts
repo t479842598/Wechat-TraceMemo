@@ -13,6 +13,8 @@ import type {
   AiSearchExternalAuthorizationRequest,
   AiSearchExternalAuthorizationResult,
   AiSearchProviderStatus,
+  AIListModelsRequest,
+  AIListModelsResult,
   AIProviderConfig,
   AIVisionTestRequest,
   LegacyAIConfig
@@ -142,6 +144,8 @@ const api = {
   setDefaultAIProvider: (providerId: string) =>
     ipcRenderer.invoke('ai:setDefaultProvider', providerId),
   testAIProvider: (providerId: string) => ipcRenderer.invoke('ai:testProvider', providerId),
+  listProviderModels: (request: AIListModelsRequest): Promise<AIListModelsResult> =>
+    ipcRenderer.invoke('ai:listModels', request),
   testAIVision: (request: AIVisionTestRequest) => ipcRenderer.invoke('ai:testVision', request),
   migrateLegacyAIConfig: (config: LegacyAIConfig) => ipcRenderer.invoke('ai:migrateLegacy', config),
   copyImage: (base64String) => ipcRenderer.invoke('copy-image', base64String),

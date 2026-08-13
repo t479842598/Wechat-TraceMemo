@@ -56,6 +56,7 @@ import type {
 import type {
   AIChatRequestOptions,
   AiSearchExternalAuthorizationRequest,
+  AIListModelsRequest,
   AIProviderConfig,
   AIVisionTestRequest,
   LegacyAIConfig
@@ -1134,6 +1135,9 @@ app.whenReady().then(async () => {
     aiProviderService.setDefault(providerId)
   )
   ipcMain.handle('ai:testProvider', (_, providerId: string) => aiProviderService.test(providerId))
+  ipcMain.handle('ai:listModels', (_, request: AIListModelsRequest) =>
+    aiProviderService.listModels(request)
+  )
   ipcMain.handle('ai:testVision', (_, request: AIVisionTestRequest) =>
     aiProviderService.testVision(request)
   )

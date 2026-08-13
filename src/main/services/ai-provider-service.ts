@@ -4,6 +4,8 @@ import path from 'path'
 import type {
   AIChatRequestOptions,
   AIConnectionTestResult,
+  AIListModelsRequest,
+  AIListModelsResult,
   AIProviderConfig,
   AIProviderListResult,
   AIProviderSummary,
@@ -226,6 +228,58 @@ export class AIProviderService {
       const message = safeAIError(error)
       this.updateTestStatus(providerId, 'error', message)
       return { success: false, error: message, latencyMs: Date.now() - startedAt }
+    }
+  }
+
+  /**
+   * 从供应商接口拉取模型列表（OpenAI 兼容 /models，Ollama /api/tags）。
+   * 供供应商编辑器「获取模型列表」按钮使用，自动填充多模型配置。
+   */
+  async listModels(request: AIListModelsRequest): Promise<AIListModelsResult> {
+    const baseUrl = request.baseUrl.trim().replace(/\/+$/, '')
+    if (!baseUrl) return { success: false, error: 'Base URL 不能为空' }
+    const isOllama = request.type === 'ollama'
+    const endpoint = isOllama ? `${baseUrl}/api/tags` : `${baseUrl}/models`
+    const headers: Record<string, string> = { ...(request.extraHeaders || {}) }
+    if (request.apiKey && request.auth.type !== 'none') {
+      if (request.auth.type === 'bearer') headers.authorization = `Bearer ${request.apiKey}`
+      else if (request.auth.type === 'x-api-key') headers['x-api-key'] = request.apiKey
+      else headers[request.auth.headerName || 'authorization'] = request.apiKey
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), request.timeoutMs || 15000)
+    try {
+      const response = await fetch(endpoint, { headers, signal: controller.signal })
+      if (!response.ok)
+        return { success: false, error: `HTTP ${response.status} ${response.statusText}` }
+      const payload = (await response.json()) as Record<string, unknown>
+      const ids: string[] = []
+      if (isOllama) {
+        const models = payload.models as Array<{ name?: string; model?: string }> | undefined
+        for (const model of models || []) {
+          const id = model.name || model.model
+          if (id) ids.push(id)
+        }
+      } else {
+        const data = payload.data as Array<{ id?: string }> | undefined
+        for (const model of data || []) if (model.id) ids.push(model.id)
+        if (!ids.length) {
+          const models = payload.models as Array<{ id?: string; name?: string }> | undefined
+          for (const model of models || []) {
+            const id = model.id || model.name
+            if (id) ids.push(id)
+          }
+        }
+      }
+      if (!ids.length) return { success: false, error: '接口未返回模型列表' }
+      return { success: true, models: ids.map((id) => ({ id, name: id })) }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    } finally {
+      clearTimeout(timer)
     }
   }
 

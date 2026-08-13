@@ -37,6 +37,8 @@ import type {
   AiSearchExternalAuthorizationResult,
   AiSearchProviderStatus,
   AIConnectionTestResult,
+  AIListModelsRequest,
+  AIListModelsResult,
   AIProviderConfig,
   AIProviderListResult,
   AIRuntimeModelConfig,
@@ -253,6 +255,7 @@ declare global {
       deleteAIProvider: (providerId: string) => Promise<AIProviderListResult>
       setDefaultAIProvider: (providerId: string) => Promise<AIProviderListResult>
       testAIProvider: (providerId: string) => Promise<AIConnectionTestResult>
+      listProviderModels: (request: AIListModelsRequest) => Promise<AIListModelsResult>
       testAIVision: (request: AIVisionTestRequest) => Promise<AIVisionTestResult>
       migrateLegacyAIConfig: (config: LegacyAIConfig) => Promise<AIProviderListResult>
       copyImage: (base64String: string) => Promise<{ success: boolean; error?: string }>

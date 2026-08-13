@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import type { AIProviderSummary, AIRuntimeModelConfig } from '../../../../../shared/ai-provider'
 import type { AIVisionTestState } from './types'
 
-export function AIImageUnderstandingTest({
+export const AIImageUnderstandingTest = memo(function AIImageUnderstandingTest({
   runtime,
   provider,
   state,
@@ -112,7 +113,7 @@ export function AIImageUnderstandingTest({
       </footer>
     </section>
   )
-}
+})
 
 function formatFileSize(bytes: number): string {
   return bytes < 1024 * 1024

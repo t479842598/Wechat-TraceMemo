@@ -1742,6 +1742,25 @@
   border-color: #247a63;
   box-shadow: 0 0 0 2px rgba(36, 122, 99, 0.08);
 }
+/* 下拉选项强制浅色背景，避免系统深色主题下黑底黑字看不到内容 */
+.ai-provider-editor select option {
+  background: #ffffff;
+  color: #202724;
+}
+.ai-model-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-provider-fetch-error {
+  margin: 8px 0 0;
+  color: #c0392b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ai-provider-editor .ai-fetch-models {
+  color: #247a63;
+}
 .ai-provider-form-grid,
 .ai-provider-advanced > div {
   display: grid;

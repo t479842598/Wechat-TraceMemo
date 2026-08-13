@@ -3,6 +3,7 @@ import type {
   AIProviderConfig,
   AIProviderType
 } from '../../../../../shared/ai-provider'
+import { useMemo, useState } from 'react'
 import { PROVIDER_PRESETS, PROVIDER_TYPE_LABELS } from './presets'
 
 export function AIProviderEditor({
@@ -24,6 +25,8 @@ export function AIProviderEditor({
   onCancel: () => void
   onSave: () => void
 }): React.ReactElement {
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const [fetchError, setFetchError] = useState<string | undefined>(undefined)
   const patch = (value: Partial<AIProviderConfig>): void => onChange({ ...provider, ...value })
   const patchModel = (index: number, value: Partial<AIModelDefinition>): void => {
     const models = provider.models.map((model, modelIndex) =>
@@ -36,11 +39,49 @@ export function AIProviderEditor({
         : models[0]?.id || ''
     })
   }
-  const preview = JSON.stringify(
-    { ...provider, apiKey: provider.apiKey ? '***' : undefined },
-    null,
-    2
+  const preview = useMemo(
+    () =>
+      JSON.stringify(
+        { ...provider, apiKey: provider.apiKey ? '***' : undefined },
+        null,
+        2
+      ),
+    [provider]
   )
+
+  const fetchModels = async (): Promise<void> => {
+    if (!provider.baseUrl.trim()) {
+      setFetchError('请先填写 Base URL')
+      return
+    }
+    setFetchingModels(true)
+    setFetchError(undefined)
+    const result = await window.api.listProviderModels({
+      baseUrl: provider.baseUrl,
+      type: provider.type,
+      auth: provider.auth,
+      apiKey: provider.apiKey || undefined,
+      extraHeaders: provider.advanced.extraHeaders,
+      timeoutMs: provider.advanced.timeoutMs
+    })
+    setFetchingModels(false)
+    if (!result.success || !result.models?.length) {
+      setFetchError(result.error || '获取模型列表失败')
+      return
+    }
+    const models: AIModelDefinition[] = result.models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      capabilities: { chat: true, vision: false, ocr: false, longContext: false }
+    }))
+    patch({
+      models,
+      defaultModel:
+        provider.defaultModel && models.some((model) => model.id === provider.defaultModel)
+          ? provider.defaultModel
+          : models[0]?.id || ''
+    })
+  }
 
   return (
     <section className="settings-card ai-provider-editor">
@@ -141,10 +182,21 @@ export function AIProviderEditor({
 
       <div className="ai-model-table-heading">
         <h3>模型配置</h3>
-        <button onClick={() => patch({ models: [...provider.models, emptyModel()] })}>
-          新增模型
-        </button>
+        <div className="ai-model-heading-actions">
+          <button
+            type="button"
+            className="ai-fetch-models"
+            disabled={fetchingModels || !provider.baseUrl.trim()}
+            onClick={() => void fetchModels()}
+          >
+            {fetchingModels ? '获取中…' : '获取模型列表'}
+          </button>
+          <button type="button" onClick={() => patch({ models: [...provider.models, emptyModel()] })}>
+            新增模型
+          </button>
+        </div>
       </div>
+      {fetchError ? <p className="ai-provider-fetch-error">{fetchError}</p> : null}
       <div className="ai-model-table">
         {provider.models.map((model, index) => (
           <div className="ai-model-row" key={`${index}-${model.id}`}>
