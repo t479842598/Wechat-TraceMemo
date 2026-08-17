@@ -84,7 +84,7 @@ export function AIProviderEditor({
   }
 
   return (
-    <section className="settings-card ai-provider-editor">
+    <section id="ai-provider-editor" className="settings-card ai-provider-editor">
       <header>
         <div>
           <h2>{editing ? '编辑供应商' : '新增供应商'}</h2>
@@ -107,7 +107,11 @@ export function AIProviderEditor({
       <div className="ai-provider-form-grid">
         <label>
           供应商名称
-          <input value={provider.name} onChange={(event) => patch({ name: event.target.value })} />
+          <input
+            id="ai-provider-name"
+            value={provider.name}
+            onChange={(event) => patch({ name: event.target.value })}
+          />
         </label>
         <label>
           供应商 ID
@@ -200,16 +204,22 @@ export function AIProviderEditor({
       <div className="ai-model-table">
         {provider.models.map((model, index) => (
           <div className="ai-model-row" key={`${index}-${model.id}`}>
-            <input
-              value={model.name}
-              onChange={(event) => patchModel(index, { name: event.target.value })}
-              placeholder="显示名称"
-            />
-            <input
-              value={model.id}
-              onChange={(event) => patchModel(index, { id: event.target.value })}
-              placeholder="实际模型 ID"
-            />
+            <label className="ai-model-identity-field">
+              <span>模型名称</span>
+              <input
+                value={model.name}
+                onChange={(event) => patchModel(index, { name: event.target.value })}
+                placeholder="例如：DeepSeek Chat"
+              />
+            </label>
+            <label className="ai-model-identity-field">
+              <span>模型 ID</span>
+              <input
+                value={model.id}
+                onChange={(event) => patchModel(index, { id: event.target.value })}
+                placeholder="例如：deepseek-chat"
+              />
+            </label>
             <label>
               <input
                 type="checkbox"
@@ -366,5 +376,9 @@ export function AIProviderEditor({
 }
 
 function emptyModel(): AIModelDefinition {
-  return { name: '', id: '', capabilities: { chat: true, vision: false, ocr: false, longContext: false } }
+  return {
+    name: '',
+    id: '',
+    capabilities: { chat: true, vision: false, ocr: false, longContext: false }
+  }
 }
