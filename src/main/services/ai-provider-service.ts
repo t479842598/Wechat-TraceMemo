@@ -241,10 +241,12 @@ export class AIProviderService {
     const isOllama = request.type === 'ollama'
     const endpoint = isOllama ? `${baseUrl}/api/tags` : `${baseUrl}/models`
     const headers: Record<string, string> = { ...(request.extraHeaders || {}) }
-    if (request.apiKey && request.auth.type !== 'none') {
-      if (request.auth.type === 'bearer') headers.authorization = `Bearer ${request.apiKey}`
-      else if (request.auth.type === 'x-api-key') headers['x-api-key'] = request.apiKey
-      else headers[request.auth.headerName || 'authorization'] = request.apiKey
+    // 编辑已有供应商时前端不会回传 API Key，改从安全存储读取
+    const apiKey = request.apiKey || this.keyStore.get(request.providerId || '').key
+    if (apiKey && request.auth.type !== 'none') {
+      if (request.auth.type === 'bearer') headers.authorization = `Bearer ${apiKey}`
+      else if (request.auth.type === 'x-api-key') headers['x-api-key'] = apiKey
+      else headers[request.auth.headerName || 'authorization'] = apiKey
     }
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), request.timeoutMs || 15000)

@@ -57,6 +57,7 @@ export function AIProviderEditor({
     setFetchingModels(true)
     setFetchError(undefined)
     const result = await window.api.listProviderModels({
+      providerId: provider.id,
       baseUrl: provider.baseUrl,
       type: provider.type,
       auth: provider.auth,

@@ -184,7 +184,8 @@ export function useApiCenterController(selectedContact: Contact | null): {
 
   useEffect(() => {
     void refresh()
-    const timer = window.setInterval(() => void refresh(), 4000)
+    // 状态轮询降频（10s），避免持续高频 IPC 与重渲染
+    const timer = window.setInterval(() => void refresh(), 10_000)
     return () => window.clearInterval(timer)
   }, [refresh])
 

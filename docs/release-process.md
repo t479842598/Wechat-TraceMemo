@@ -37,6 +37,10 @@
    - 构建产物已生成：`out/{main,preload,renderer}`
    - 备份：`E:\AI\Wechatexplorer\electron\resources\app\out` → `out.bak-<yyyyMMdd-HHmm>`
    - 替换：将 `out/main`、`out/preload`、`out/renderer` 复制到安装目录同名位置
+   - **同步资源文件**（易遗漏，务必执行）：将工作区 `resources/` 下的 `*.html` 等资源与
+     安装目录 `E:\AI\Wechatexplorer\electron\resources\resources\` 逐文件比对，
+     上游新增/更新的文件（如 `daily_report_templates.html`、`mobile_daily_report*.html`）
+     必须同步复制，否则日报模板/导出会报「日报模板不存在」。
    - 若主进程新增了运行时 npm 依赖（如 qrcode），需同步补齐安装目录
      `resources/app/node_modules`（并更新 `resources/app/package.json` 的 dependencies）
 

@@ -36,7 +36,7 @@ describe('WechatDb normalized messages', () => {
     })
   })
 
-  it('scans without time bounds, then filters, deduplicates and sorts in application code', async () => {
+  it('passes the time range to the client, then deduplicates and sorts in application code', async () => {
     const row = (id: string, createTime: number): WechatMessage => ({
       mesLocalID: id,
       serverId: `server-${id}`,
@@ -49,12 +49,12 @@ describe('WechatDb normalized messages', () => {
     const start = Math.floor(new Date(2025, 0, 1).getTime() / 1000)
     const end = Math.floor(new Date(2025, 0, 4).getTime() / 1000)
     const shardBoundaryMessage = row('jan-2-boundary', start + 32 * 60 * 60)
+    // Time-range filtering is applied by the SQLite client, so the mock only
+    // returns rows inside the requested range.
     const getMessagesAsync = vi.fn(async () => [
-      row('before-range', start - 1),
       row('newest', start + 48 * 60 * 60),
       shardBoundaryMessage,
-      { ...shardBoundaryMessage },
-      row('after-range', end + 1)
+      { ...shardBoundaryMessage }
     ])
     const db = Object.assign(Object.create(WechatDb.prototype), {
       wcdb4Client: { getMessagesAsync },
@@ -65,7 +65,7 @@ describe('WechatDb normalized messages', () => {
     const messages = await db.getUserMessagesForExport('fixture-md5', start, end)
 
     expect(getMessagesAsync).toHaveBeenCalledOnce()
-    expect(getMessagesAsync).toHaveBeenCalledWith('fixture-user')
+    expect(getMessagesAsync).toHaveBeenCalledWith('fixture-user', start, end)
     expect(messages.map((message) => message.mesLocalID)).toEqual(['jan-2-boundary', 'newest'])
   })
 })

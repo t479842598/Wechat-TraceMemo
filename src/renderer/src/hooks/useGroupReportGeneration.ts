@@ -29,9 +29,10 @@ export type { VoiceTranscriptionProgress } from '../utils/voice-message-referenc
 
 const REPORT_STEP_TIMEOUT_MS = 90_000
 const REPORT_MODEL_TIMEOUT_BUFFER_MS = 10_000
-// 单条语音识别超时与主进程 RecognitionHost 的 120s 对齐，避免 worker 排队/长语音推理时被更短的
-// 渲染层超时提前误杀（此前 90s 先于主进程触发，导致「语音转写 超时」拖垮整个日报生成）。
-const VOICE_RECOGNITION_TIMEOUT_MS = 120_000
+// 单条语音识别超时：主进程对每条语音（silk 解码 + sherpa 推理）串行处理，
+// 渲染层串行转写时该等待 ≈ 单条处理时间；放宽到 300s 覆盖长语音/慢机器，
+// 避免渲染层先于主进程超时而遗留孤儿任务（此前 120s 会在大语音排队时误触发）。
+const VOICE_RECOGNITION_TIMEOUT_MS = 300_000
 
 export type ReportGenerationPhase =
   | 'idle'
@@ -439,6 +440,22 @@ export function useGroupReportGeneration({
     setGenerationMetadata({ generationLogs: [] })
   }, [])
 
+  // 转写进度节流：语音消息多时逐条 setState 会触发 App 级整页重渲染（数十~数百次），
+  // 表现为界面卡死/点击无响应。每 5 条上报一次，最后一条强制上报（显示完成）。
+  const voiceProgressLastUpdateRef = useRef(0)
+  const handleVoiceTranscriptionProgress = useCallback(
+    (progress: VoiceTranscriptionProgress): void => {
+      const isFinal = progress.processed >= progress.total
+      const now = Date.now()
+      if (!isFinal && progress.processed % 5 !== 0 && now - voiceProgressLastUpdateRef.current < 1000) {
+        return
+      }
+      voiceProgressLastUpdateRef.current = now
+      setVoiceTranscriptionProgress(progress)
+    },
+    []
+  )
+
   const transcribeSelectedVoiceMessages = useCallback(
     async (messages: Message[]): Promise<Message[]> => {
       setVoiceTranscriptionProgress(null)
@@ -456,10 +473,10 @@ export function useGroupReportGeneration({
             '语音转写',
             VOICE_RECOGNITION_TIMEOUT_MS
           ),
-        onProgress: setVoiceTranscriptionProgress
+        onProgress: handleVoiceTranscriptionProgress
       })
     },
-    []
+    [handleVoiceTranscriptionProgress]
   )
 
   const runPreparedReport = useCallback(

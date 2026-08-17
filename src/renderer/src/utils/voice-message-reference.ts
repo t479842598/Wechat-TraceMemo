@@ -89,10 +89,10 @@ export async function transcribeVoiceMessages(
     }
   }
 
-  // 有界并发转写：串行逐条 await 在语音消息较多时会让界面长时间停留在
-  // “转写中”（每次都是完整 IPC 往返 + 模型推理）。改为固定并发度并行处理，
-  // 并保持按原始顺序写入结果、逐条上报进度，避免长任务期间界面失去响应。
-  const CONCURRENCY = 3
+  // 串行转写：主进程对每条语音（silk 解码 + 推理）是串行处理的，
+  // 渲染层并发只会增加 IPC 排队，排队超时会遗留「孤儿任务」堆积在主进程。
+  // 串行 + 长超时后，每条请求从发出到完成 = 单条处理时间，不会超时，界面保持可点击。
+  const CONCURRENCY = 1
   let nextIndex = 0
   const runTranscription = async (): Promise<void> => {
     while (true) {

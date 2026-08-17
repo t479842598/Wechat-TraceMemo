@@ -1,6 +1,10 @@
 import type { VoiceMessageReference } from '../../shared/voice-recognition'
 import type { VoiceService } from '../voice-service'
-import type { AudioDecoderRegistry, EncodedVoiceSource } from './audio-decoder'
+import {
+  findSilkWasmRuntimeLocation,
+  getSilkWasmRuntimeLocations,
+  type EncodedVoiceSource
+} from './audio-decoder'
 import type {
   AudioProcessor,
   SourceResolver,
@@ -28,7 +32,6 @@ export class VoiceSourceResolver implements SourceResolver {
 export class VoicePipeline {
   constructor(
     private readonly sourceResolver: SourceResolver,
-    private readonly decoderRegistry: AudioDecoderRegistry,
     private readonly audioProcessor: AudioProcessor,
     private readonly recognizer: SpeechRecognizer,
     private readonly transcripts: TranscriptRepository
@@ -57,36 +60,40 @@ export class VoicePipeline {
 
     const source = await this.sourceResolver.resolve(reference)
     if (signal?.aborted) throw new DOMException('Recognition cancelled', 'AbortError')
-    const decoded = await this.decoderRegistry.decode(source)
-    if (signal?.aborted) throw new DOMException('Recognition cancelled', 'AbortError')
-    const audio = this.audioProcessor.process(decoded)
-    if (audio.samples.length === 0) throw new Error('Voice audio is empty after processing')
-    const key = {
-      accountId,
-      messageIdentity,
-      audioHash: audio.sourceHash,
-      processorVersion: audio.processorVersion,
-      ...this.recognizer.metadata
+    // silk 解码移到识别 worker 内执行：主进程不再同步解码，避免阻塞事件循环
+    // （此前每条语音 WASM 解码期间所有 IPC/点击无响应）。
+    let silkWasmPath: string | undefined
+    try {
+      silkWasmPath = findSilkWasmRuntimeLocation(getSilkWasmRuntimeLocations())?.packagePath
+    } catch {
+      // 非打包/测试环境可能无法解析运行时路径；worker 端缺路径会明确报错
     }
-    const cached = this.transcripts.find(key)
-    if (cached?.transcript.trim()) {
-      return {
-        transcript: cached.transcript.trim(),
-        language: cached.language,
-        durationMs: cached.durationMs,
-        cached: true
-      }
-    }
-
-    const output = await this.recognizer.recognize(audio, signal)
+    const output = await this.recognizer.recognize(
+      {
+        encoded: {
+          data: source.data,
+          sampleRate: 24000,
+          sourceHash: source.sourceHash
+        },
+        silkWasmPath
+      },
+      signal
+    )
     const transcript = output.text.trim()
     if (!transcript) throw new Error('Voice recognition produced an empty transcript')
     const now = Date.now()
+    const key = {
+      accountId,
+      messageIdentity,
+      processorVersion: this.audioProcessor.version,
+      ...this.recognizer.metadata
+    }
     const record: TranscriptRecord = {
       ...key,
+      audioHash: output.sourceHash || source.sourceHash,
       transcript,
       language: output.language,
-      durationMs: audio.durationMs,
+      durationMs: output.durationMs || 0,
       createdAt: now,
       updatedAt: now
     }
@@ -94,7 +101,7 @@ export class VoicePipeline {
     return {
       transcript,
       language: output.language,
-      durationMs: audio.durationMs,
+      durationMs: output.durationMs || 0,
       cached: false
     }
   }

@@ -134,6 +134,7 @@ export interface AIVisionTestRequest {
 }
 
 export interface AIListModelsRequest {
+  providerId?: string
   baseUrl: string
   type: AIProviderType
   auth: AIProviderAuth

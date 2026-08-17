@@ -10,6 +10,12 @@ export interface PipelineAudio {
   durationMs: number
 }
 
+/** 未解码的语音原始数据：由识别 worker 内部解码，避免主进程同步解码阻塞事件循环 */
+export interface EncodedRecognitionInput {
+  encoded: { data: Uint8Array; sampleRate: number; sourceHash: string }
+  silkWasmPath?: string
+}
+
 export interface RecognitionMetadata {
   recognizerId: string
   modelVersion: string
@@ -54,7 +60,10 @@ export interface AudioProcessor {
 
 export interface SpeechRecognizer {
   readonly metadata: RecognitionMetadata
-  recognize(audio: PipelineAudio, signal?: AbortSignal): Promise<RecognitionOutput>
+  recognize(
+    audio: PipelineAudio | EncodedRecognitionInput,
+    signal?: AbortSignal
+  ): Promise<RecognitionOutput & { durationMs?: number; sourceHash?: string }>
   dispose(): Promise<void>
 }
 

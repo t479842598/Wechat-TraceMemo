@@ -1217,8 +1217,37 @@ function App(): React.ReactElement {
     await handleLogin(saved.key, account.accountRoot)
   }
 
-  const handleSelectContact = async (contact: Contact, forceLive = false): Promise<void> => {
-    setArchiveJumpTime(null)
+  // 稳定引用：此前作为内联箭头传入 SettingsWorkspace，每次 App 渲染都是新引用，
+  // 曾被设置页 controller 用作 effect 依赖导致 refresh 无限循环（应用卡死）。
+  const handleAIRuntimeChange = React.useCallback((config: AIRuntimeModelConfig): void => {
+    setAiModelConfig(config)
+    void Promise.all([window.api.getAIVisionRuntimeConfig(), window.api.listAIProviders()])
+      .then(([visionRuntime, providerList]) => {
+        const providers = providerList.success ? providerList.providers : []
+        const textChoices = reportModelChoices(providers, 'chat')
+        const visionChoices = reportModelChoices(providers, 'vision')
+        setReportTextModelOptions(textChoices)
+        setReportVisionModelOptions(visionChoices)
+        setReportTextModelConfig(
+          (current) =>
+            selectReportModel(
+              textChoices,
+              REPORT_TEXT_MODEL_STORAGE_KEY,
+              current.configured ? current : config
+            ) || config
+        )
+        setAiVisionModelConfig((current) =>
+          selectReportModel(
+            visionChoices,
+            REPORT_VISION_MODEL_STORAGE_KEY,
+            current || visionRuntime
+          )
+        )
+      })
+      .catch(() => undefined)
+  }, [])
+
+  const handleSelectContact = async (contact: Contact, forceLive = false): Promise<void> => {    setArchiveJumpTime(null)
     setSelectedContact(contact)
     selectedContactMd5Ref.current = contact.md5
     currentGroupSnapshotRef.current = null
@@ -1943,36 +1972,7 @@ function App(): React.ReactElement {
             onContactsChange={setContacts}
             onFilteredContactsChange={setFilteredContacts}
             onReturnToLogin={handleReturnToLogin}
-            onAIRuntimeChange={(config: AIRuntimeModelConfig) => {
-              setAiModelConfig(config)
-              void Promise.all([
-                window.api.getAIVisionRuntimeConfig(),
-                window.api.listAIProviders()
-              ])
-                .then(([visionRuntime, providerList]) => {
-                  const providers = providerList.success ? providerList.providers : []
-                  const textChoices = reportModelChoices(providers, 'chat')
-                  const visionChoices = reportModelChoices(providers, 'vision')
-                  setReportTextModelOptions(textChoices)
-                  setReportVisionModelOptions(visionChoices)
-                  setReportTextModelConfig(
-                    (current) =>
-                      selectReportModel(
-                        textChoices,
-                        REPORT_TEXT_MODEL_STORAGE_KEY,
-                        current.configured ? current : config
-                      ) || config
-                  )
-                  setAiVisionModelConfig((current) =>
-                    selectReportModel(
-                      visionChoices,
-                      REPORT_VISION_MODEL_STORAGE_KEY,
-                      current || visionRuntime
-                    )
-                  )
-                })
-                .catch(() => undefined)
-            }}
+            onAIRuntimeChange={handleAIRuntimeChange}
             onNotice={setReportNotice}
             onOpenSettings={openSettings}
             onAppearanceChange={handleAppearanceChange}

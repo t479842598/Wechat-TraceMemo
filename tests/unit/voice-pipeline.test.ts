@@ -274,7 +274,6 @@ describe('voice pipeline cache lookup', () => {
     const recognize = vi.fn()
     const pipeline = new VoicePipeline(
       { resolve },
-      { decode } as never,
       { version: 'processor-v1', process },
       {
         metadata: {
@@ -323,14 +322,6 @@ describe('voice pipeline cache lookup', () => {
     const pipeline = new VoicePipeline(
       { resolve },
       {
-        decode: vi.fn().mockResolvedValue({
-          pcm: Buffer.from([1, 0]),
-          sampleRate: 16000,
-          channels: 1,
-          sourceHash: 'new-audio'
-        })
-      } as never,
-      {
         version: 'processor-v1',
         process: vi.fn().mockReturnValue({
           samples: new Float32Array([0.1]),
@@ -347,7 +338,9 @@ describe('voice pipeline cache lookup', () => {
           modelVersion: 'model-v1',
           modelFingerprint: 'fingerprint-a'
         },
-        recognize: vi.fn().mockResolvedValue({ text: '新转写' }),
+        recognize: vi
+          .fn()
+          .mockResolvedValue({ text: '新转写', durationMs: 1, sourceHash: 'new-audio' }),
         dispose: vi.fn()
       },
       repository

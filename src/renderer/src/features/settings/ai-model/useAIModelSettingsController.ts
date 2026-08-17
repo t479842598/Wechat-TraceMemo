@@ -16,20 +16,30 @@ export function useAIModelSettingsController({
   onNotice: (message: string) => void
 }): AIModelSettingsController {
   const [state, dispatch] = useReducer(aiModelSettingsReducer, initialAIModelSettingsState)
-  const onRuntimeChangeRef = useRef(onRuntimeChange)
 
-  useEffect(() => {
-    onRuntimeChangeRef.current = onRuntimeChange
-  }, [onRuntimeChange])
+  // App 传入的 onRuntimeChange 每次渲染都是新引用（内联箭头函数），
+  // 若直接作为依赖会令 refresh 每次渲染重建、useEffect 反复触发 refresh，
+  // 而 refresh 又回调 onRuntimeChange 触发 App 重渲染，形成无限循环（卡死）。
+  // 用 ref 持有最新回调，refresh 保持稳定，effect 只在挂载时执行一次。
+  const onRuntimeChangeRef = useRef(onRuntimeChange)
+  onRuntimeChangeRef.current = onRuntimeChange
 
   const refresh = useCallback(async (): Promise<void> => {
-    const [list, runtime] = await Promise.all([
-      window.api.listAIProviders(),
-      window.api.getAIRuntimeConfig()
-    ])
-    if (!list.success) return dispatch({ type: 'ERROR', error: list.error || '供应商配置读取失败' })
-    dispatch({ type: 'LOADED', providers: list.providers, runtime })
-    onRuntimeChangeRef.current(runtime)
+    try {
+      const [list, runtime] = await Promise.all([
+        window.api.listAIProviders(),
+        window.api.getAIRuntimeConfig()
+      ])
+      if (!list.success)
+        return dispatch({ type: 'ERROR', error: list.error || '供应商配置读取失败' })
+      dispatch({ type: 'LOADED', providers: list.providers, runtime })
+      onRuntimeChangeRef.current(runtime)
+    } catch (error) {
+      dispatch({
+        type: 'ERROR',
+        error: error instanceof Error ? error.message : '供应商配置读取失败'
+      })
+    }
   }, [])
 
   useEffect(() => {

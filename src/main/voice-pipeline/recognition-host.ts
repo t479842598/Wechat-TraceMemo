@@ -1,6 +1,7 @@
 import { fork, type ChildProcess } from 'child_process'
 import { randomUUID } from 'crypto'
 import type {
+  EncodedRecognitionInput,
   PipelineAudio,
   RecognitionMetadata,
   RecognitionOutput,
@@ -32,45 +33,62 @@ export class RecognitionHost {
   ) {}
 
   async recognize(
-    audio: PipelineAudio,
+    source:
+      | PipelineAudio
+      | {
+          encoded: { data: Uint8Array; sampleRate: number; sourceHash: string }
+          silkWasmPath?: string
+        },
     model: { modelPath: string; tokensPath: string; fingerprint: string },
     signal?: AbortSignal
-  ): Promise<RecognitionOutput> {
+  ): Promise<RecognitionOutput & { durationMs?: number; sourceHash?: string }> {
     if (signal?.aborted) throw new DOMException('Recognition cancelled', 'AbortError')
     const child = this.ensureChild()
     const requestId = randomUUID()
+    const isEncoded = 'encoded' in source
     const request: WorkerRecognitionRequest = {
       version: VOICE_WORKER_PROTOCOL_VERSION,
       type: 'recognize',
       requestId,
-      payload: {
-        recognizerId: 'sensevoice',
-        samples: audio.samples,
-        sampleRate: audio.sampleRate,
-        modelPath: model.modelPath,
-        tokensPath: model.tokensPath,
-        modelFingerprint: model.fingerprint
-      }
+      payload: isEncoded
+        ? {
+            recognizerId: 'sensevoice',
+            encoded: source.encoded,
+            silkWasmPath: source.silkWasmPath,
+            modelPath: model.modelPath,
+            tokensPath: model.tokensPath,
+            modelFingerprint: model.fingerprint
+          }
+        : {
+            recognizerId: 'sensevoice',
+            samples: source.samples,
+            sampleRate: source.sampleRate,
+            modelPath: model.modelPath,
+            tokensPath: model.tokensPath,
+            modelFingerprint: model.fingerprint
+          }
     }
 
-    return new Promise<RecognitionOutput>((resolve, reject) => {
-      const abort = (): void => {
-        this.terminate(new DOMException('Recognition cancelled', 'AbortError'))
+    return new Promise<RecognitionOutput & { durationMs?: number; sourceHash?: string }>(
+      (resolve, reject) => {
+        const abort = (): void => {
+          this.terminate(new DOMException('Recognition cancelled', 'AbortError'))
+        }
+        signal?.addEventListener('abort', abort, { once: true })
+        const timer = setTimeout(() => {
+          this.terminate(new Error('Voice recognition timed out'))
+        }, this.timeoutMs)
+        this.pending.set(requestId, {
+          resolve,
+          reject,
+          timer,
+          removeAbortListener: () => signal?.removeEventListener('abort', abort)
+        })
+        child.send(request, (error) => {
+          if (error) this.finish(requestId, null, error)
+        })
       }
-      signal?.addEventListener('abort', abort, { once: true })
-      const timer = setTimeout(() => {
-        this.terminate(new Error('Voice recognition timed out'))
-      }, this.timeoutMs)
-      this.pending.set(requestId, {
-        resolve,
-        reject,
-        timer,
-        removeAbortListener: () => signal?.removeEventListener('abort', abort)
-      })
-      child.send(request, (error) => {
-        if (error) this.finish(requestId, null, error)
-      })
-    })
+    )
   }
 
   async dispose(): Promise<void> {
@@ -93,7 +111,9 @@ export class RecognitionHost {
       if (message.type === 'result') {
         this.finish(message.requestId, {
           text: message.transcript,
-          language: message.language
+          language: message.language,
+          durationMs: message.durationMs,
+          sourceHash: message.sourceHash
         })
       } else {
         this.finish(message.requestId, null, new Error(message.error))
@@ -110,7 +130,11 @@ export class RecognitionHost {
     return child
   }
 
-  private finish(requestId: string, result: RecognitionOutput | null, error?: Error): void {
+  private finish(
+    requestId: string,
+    result: (RecognitionOutput & { durationMs?: number; sourceHash?: string }) | null,
+    error?: Error
+  ): void {
     const pending = this.pending.get(requestId)
     if (!pending) return
     this.pending.delete(requestId)
@@ -159,7 +183,10 @@ export class WorkerSpeechRecognizer implements SpeechRecognizer {
     }
   }
 
-  async recognize(audio: PipelineAudio, signal?: AbortSignal): Promise<RecognitionOutput> {
+  async recognize(
+    audio: PipelineAudio | EncodedRecognitionInput,
+    signal?: AbortSignal
+  ): Promise<RecognitionOutput & { durationMs?: number; sourceHash?: string }> {
     const paths = await this.modelManager.getPaths()
     if (!paths) throw new Error('Voice recognition model is not ready')
     return this.host.recognize(

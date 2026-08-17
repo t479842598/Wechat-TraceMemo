@@ -9,7 +9,6 @@ import type {
 } from '../../shared/voice-recognition'
 import type { VoiceService } from '../voice-service'
 import { PcmAudioProcessor } from './audio-processor'
-import { createDefaultAudioDecoderRegistry } from './audio-decoder'
 import { VoiceModelManager } from './model-manager'
 import { RecognitionHost, WorkerSpeechRecognizer } from './recognition-host'
 import { VoiceTaskScheduler } from './task-scheduler'
@@ -52,7 +51,6 @@ export class VoiceRecognitionUseCase {
     this.accountId = voiceAccountIdentity(accountRoot)
     this.pipeline = new VoicePipeline(
       new VoiceSourceResolver(voiceService),
-      createDefaultAudioDecoderRegistry(),
       new PcmAudioProcessor(),
       this.recognizers.get('sensevoice'),
       this.transcripts
